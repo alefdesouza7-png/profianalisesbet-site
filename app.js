@@ -32,7 +32,7 @@ function render(lista){
   const shown=document.querySelector("#shown");
   const total=document.querySelector("#total");
   const status=document.querySelector("#status");
-  const games=document.querySelector("#games");
+  const list=document.querySelector("#games");
 
   if(shown) shown.textContent=lista.length;
   if(total) total.textContent=jogos.length;
