@@ -17,4 +17,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --assets=. --exclude=node_modules/** --name=profianalisesbet-site --compatibility-date 2026-09-19
+          command: deploy --assets=. --name=profianalisesbet-site --compatibility-date 2026-09-19
