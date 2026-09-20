@@ -506,3 +506,4 @@ if (live) {
 }
 
 load();
+setInterval(() => load(mode), 30000);
