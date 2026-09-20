@@ -16,7 +16,7 @@ async function load(m = "jogos") {
     const r = await fetch(`${API}${m === "ao-vivo" ? "/live" : "/api/jogos"}`);
     const d = await r.json();
 
-    jogos = d.jogos || [];
+    jogos = m === "ao-vivo" ? (d.jogos || d.dados || []) : (d.jogos || []);
     render(jogos);
   } catch (err) {
     if (status) {
