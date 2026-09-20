@@ -53,35 +53,35 @@ function render(lista) {
   list.innerHTML = lista.map((j) => `
     <div
       class="game"
-      onclick="abrirJogo(${Number(j.id)})"
+      onclick="abrirJogo(${Number(j.fixture_id)})"
       style="cursor:pointer"
     >
       <div class="league">
-        ${e(j.competition)} · ${e(j.competition_country)}
+        ${e(j.campeonato?.nome)} · ${e(j.campeonato?.pais)}
       </div>
 
       <div class="teams">
 
         <div class="team">
           ${
-            j.home_logo
-              ? `<img src="${e(j.home_logo)}" alt="">`
+            j.jogo?.casa_id
+              ? `<img src="${e("https://media.api-sports.io/football/teams/" + j.jogo?.casa_id + ".png")}" alt="">`
               : ""
           }
 
-          <b>${e(j.home_team)}</b>
+          <b>${e(j.jogo?.casa)}</b>
         </div>
 
         <div class="score">
-          ${e(j.home_goals)} × ${e(j.away_goals)}
+          ${e(j.placar?.casa)} × ${e(j.placar?.fora)}
         </div>
 
         <div class="team">
-          <b>${e(j.away_team)}</b>
+          <b>${e(j.jogo?.fora)}</b>
 
           ${
-            j.away_logo
-              ? `<img src="${e(j.away_logo)}" alt="">`
+            j.jogo?.fora_id
+              ? `<img src="${e("https://media.api-sports.io/football/teams/" + j.jogo?.fora_id + ".png")}" alt="">`
               : ""
           }
         </div>
@@ -89,8 +89,8 @@ function render(lista) {
       </div>
 
       <div class="game-status">
-        ${e(j.status)}
-        ${j.minute != null ? ` · ${e(j.minute)}'` : ""}
+        ${e(j.tempo?.descricao)}
+        ${j.tempo?.minuto != null ? ` · ${e(j.tempo?.minuto)}'` : ""}
       </div>
 
       <div
