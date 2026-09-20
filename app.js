@@ -13,7 +13,7 @@ async function load(m = "jogos") {
   }
 
   try {
-    const r = await fetch(`${API}${m === "ao-vivo" ? "/live" : "/api/jogos"}`);
+    const r = await fetch(`${API}${m === "ao-vivo" ? "/live" : "/jogos"}`);
     const d = await r.json();
 
     jogos = m === "ao-vivo" ? (d.jogos || d.dados || []) : (d.jogos || []);
