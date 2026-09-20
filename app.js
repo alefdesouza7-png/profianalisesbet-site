@@ -65,7 +65,7 @@ function render(lista) {
         <div class="team">
           ${
             j.jogo?.casa_id
-              ? `<img src="${e("https://media.api-sports.io/football/teams/" + j.jogo?.casa_id + ".png")}" alt="">`
+              ? `<img src="${e("https://gateway.profianalisesbet.com.br/media/football/teams/" + j.jogo?.casa_id + ".png")}" alt="">`
               : ""
           }
 
@@ -81,7 +81,7 @@ function render(lista) {
 
           ${
             j.jogo?.fora_id
-              ? `<img src="${e("https://media.api-sports.io/football/teams/" + j.jogo?.fora_id + ".png")}" alt="">`
+              ? `<img src="${e("https://gateway.profianalisesbet.com.br/media/football/teams/" + j.jogo?.fora_id + ".png")}" alt="">`
               : ""
           }
         </div>
