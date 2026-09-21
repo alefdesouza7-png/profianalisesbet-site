@@ -53,53 +53,71 @@ function valor(v) {
 }
 
 function prioridadeLiga(j) {
-  const nome = String(j.league?.name || "").toLowerCase();
-  const pais = String(j.league?.country || "").toLowerCase();
+  const nome = String(j.league?.name || "")
+    .trim()
+    .toLowerCase();
 
-  const prioridades = [
-    ["uefa champions league", 1],
-    ["champions league", 1],
-    ["copa libertadores", 2],
-    ["libertadores", 2],
+  const pais = String(j.league?.country || "")
+    .trim()
+    .toLowerCase();
 
-    ["serie a", 3, "brazil"],
-    ["brasileirão", 3, "brazil"],
-    ["brasileirao", 3, "brazil"],
+  const igual = (liga, paisLiga = null) => {
+    if (nome !== liga) return false;
+    if (paisLiga && pais !== paisLiga) return false;
+    return true;
+  };
 
-    ["serie b", 4, "brazil"],
-    ["premier league", 5, "england"],
-    ["la liga", 6, "spain"],
-    ["laliga", 6, "spain"],
-    ["bundesliga", 7, "germany"],
-    ["serie a", 8, "italy"],
-    ["ligue 1", 9, "france"],
+  // Competições internacionais
+  if (igual("uefa champions league")) return 1;
+  if (igual("champions league")) return 1;
 
-    ["copa do brasil", 10],
-    ["sudamericana", 11],
-    ["sul-americana", 11],
+  if (igual("copa libertadores")) return 2;
+  if (igual("libertadores")) return 2;
 
-    ["liga portugal", 12],
-    ["primeira liga", 12],
+  if (igual("copa sudamericana")) return 3;
+  if (igual("sudamericana")) return 3;
 
-    ["eredivisie", 13],
-    ["major league soccer", 14],
-    ["mls", 14],
+  // Brasil
+  if (igual("serie a", "brazil")) return 10;
+  if (igual("brasileirão", "brazil")) return 10;
+  if (igual("brasileirao", "brazil")) return 10;
 
-    ["liga profesional argentina", 15],
-    ["primera division", 16, "argentina"]
-  ];
+  if (igual("serie b", "brazil")) return 11;
 
-  for (const item of prioridades) {
-    const termo = item[0];
-    const prioridade = item[1];
-    const paisNecessario = item[2];
+  if (igual("copa do brasil", "brazil")) return 12;
 
-    if (
-      nome.includes(termo) &&
-      (!paisNecessario || pais.includes(paisNecessario))
-    ) {
-      return prioridade;
-    }
+  // Inglaterra
+  if (igual("premier league", "england")) return 20;
+
+  // Espanha
+  if (igual("la liga", "spain")) return 30;
+  if (igual("laliga", "spain")) return 30;
+
+  // Alemanha
+  if (igual("bundesliga", "germany")) return 40;
+
+  // Itália
+  if (igual("serie a", "italy")) return 50;
+
+  // França
+  if (igual("ligue 1", "france")) return 60;
+
+  // Portugal
+  if (igual("primeira liga", "portugal")) return 70;
+  if (igual("liga portugal", "portugal")) return 70;
+
+  // Holanda
+  if (igual("eredivisie", "netherlands")) return 80;
+
+  // Estados Unidos
+  if (igual("major league soccer", "usa")) return 90;
+
+  // Argentina
+  if (
+    igual("liga profesional argentina", "argentina") ||
+    igual("primera division", "argentina")
+  ) {
+    return 100;
   }
 
   return 999;
@@ -353,7 +371,11 @@ function cardJogo(j) {
               }
             "
           >
-            ${e(textoStatusJogo(j))}
+            ${
+  aoVivo || terminou
+    ? e(textoStatusJogo(j))
+    : ""
+            }
           </div>
 
         </div>
@@ -520,8 +542,13 @@ function render(lista) {
     const pais =
       grupo.league?.country || "";
 
-    const logo =
-      grupo.league?.logo || "";
+    const leagueId =
+  grupo.league?.id;
+
+const logo =
+  leagueId
+    ? `https://gateway.profianalisesbet.com.br/media/football/leagues/${leagueId}.png`
+    : "";
 
     return `
       <section
