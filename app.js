@@ -436,11 +436,15 @@ async function abrirJogo(id) {
           fixture.teams?.away?.name,
 
         home_logo:
-          fixture.teams?.home?.logo,
+  fixture.teams?.home?.id
+    ? `https://gateway.profianalisesbet.com.br/media/football/teams/${fixture.teams.home.id}.png`
+    : "",
 
-        away_logo:
-          fixture.teams?.away?.logo,
-
+away_logo:
+  fixture.teams?.away?.id
+    ? `https://gateway.profianalisesbet.com.br/media/football/teams/${fixture.teams.away.id}.png`
+    : "",
+          
         home_goals:
           fixture.goals?.home,
 
