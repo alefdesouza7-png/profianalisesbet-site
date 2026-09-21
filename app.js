@@ -52,6 +52,329 @@ function valor(v) {
   return e(v);
 }
 
+function prioridadeLiga(j) {
+  const nome = String(j.league?.name || "").toLowerCase();
+  const pais = String(j.league?.country || "").toLowerCase();
+
+  const prioridades = [
+    ["uefa champions league", 1],
+    ["champions league", 1],
+    ["copa libertadores", 2],
+    ["libertadores", 2],
+
+    ["serie a", 3, "brazil"],
+    ["brasileirão", 3, "brazil"],
+    ["brasileirao", 3, "brazil"],
+
+    ["serie b", 4, "brazil"],
+    ["premier league", 5, "england"],
+    ["la liga", 6, "spain"],
+    ["laliga", 6, "spain"],
+    ["bundesliga", 7, "germany"],
+    ["serie a", 8, "italy"],
+    ["ligue 1", 9, "france"],
+
+    ["copa do brasil", 10],
+    ["sudamericana", 11],
+    ["sul-americana", 11],
+
+    ["liga portugal", 12],
+    ["primeira liga", 12],
+
+    ["eredivisie", 13],
+    ["major league soccer", 14],
+    ["mls", 14],
+
+    ["liga profesional argentina", 15],
+    ["primera division", 16, "argentina"]
+  ];
+
+  for (const item of prioridades) {
+    const termo = item[0];
+    const prioridade = item[1];
+    const paisNecessario = item[2];
+
+    if (
+      nome.includes(termo) &&
+      (!paisNecessario || pais.includes(paisNecessario))
+    ) {
+      return prioridade;
+    }
+  }
+
+  return 999;
+}
+
+function jogoEstaAoVivo(j) {
+  const status = String(j.status?.short || "").toUpperCase();
+
+  return [
+    "1H",
+    "HT",
+    "2H",
+    "ET",
+    "BT",
+    "P",
+    "SUSP",
+    "INT",
+    "LIVE"
+  ].includes(status);
+}
+
+function horarioJogo(j) {
+  if (!j.date) return "--:--";
+
+  try {
+    return new Date(j.date).toLocaleTimeString(
+      "pt-BR",
+      {
+        hour: "2-digit",
+        minute: "2-digit"
+      }
+    );
+  } catch (_) {
+    return "--:--";
+  }
+}
+
+function textoStatusJogo(j) {
+  const status = String(j.status?.short || "").toUpperCase();
+  const minuto = j.status?.elapsed;
+
+  if (jogoEstaAoVivo(j)) {
+    if (status === "HT") {
+      return "Intervalo";
+    }
+
+    if (minuto != null) {
+      return `${minuto}'`;
+    }
+
+    return "AO VIVO";
+  }
+
+  if (["FT", "AET", "PEN"].includes(status)) {
+    return "Encerrado";
+  }
+
+  if (status === "PST") {
+    return "Adiado";
+  }
+
+  if (status === "CANC") {
+    return "Cancelado";
+  }
+
+  return horarioJogo(j);
+}
+
+function cardJogo(j) {
+  const id = Number(j.id);
+
+  const casa = j.teams?.home?.name || "-";
+  const fora = j.teams?.away?.name || "-";
+
+  const casaId = j.teams?.home?.id;
+  const foraId = j.teams?.away?.id;
+
+  const logoCasa =
+    j.teams?.home?.logo ||
+    (
+      casaId
+        ? `https://gateway.profianalisesbet.com.br/media/football/teams/${casaId}.png`
+        : ""
+    );
+
+  const logoFora =
+    j.teams?.away?.logo ||
+    (
+      foraId
+        ? `https://gateway.profianalisesbet.com.br/media/football/teams/${foraId}.png`
+        : ""
+    );
+
+  const golsCasa = j.goals?.home;
+  const golsFora = j.goals?.away;
+
+  const aoVivo = jogoEstaAoVivo(j);
+
+  const terminou = [
+    "FT",
+    "AET",
+    "PEN"
+  ].includes(
+    String(j.status?.short || "").toUpperCase()
+  );
+
+  let centro = horarioJogo(j);
+
+  if (aoVivo || terminou) {
+    centro =
+      `${golsCasa ?? 0} × ${golsFora ?? 0}`;
+  }
+
+  return `
+    <div
+      class="game"
+      onclick="abrirJogo(${id})"
+      style="
+        cursor:pointer;
+        margin:0;
+        border-radius:0;
+        border-left:0;
+        border-right:0;
+        border-bottom:0;
+      "
+    >
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+          gap:12px;
+          align-items:center;
+          padding:4px 0;
+        "
+      >
+
+        <div
+          style="
+            display:flex;
+            flex-direction:column;
+            gap:12px;
+            min-width:0;
+          "
+        >
+
+          <div
+            style="
+              display:flex;
+              align-items:center;
+              gap:9px;
+              min-width:0;
+            "
+          >
+            ${
+              logoCasa
+                ? `
+                  <img
+                    src="${e(logoCasa)}"
+                    alt=""
+                    style="
+                      width:32px;
+                      height:32px;
+                      object-fit:contain;
+                      flex:none;
+                    "
+                  >
+                `
+                : ""
+            }
+
+            <b
+              style="
+                overflow:hidden;
+                text-overflow:ellipsis;
+                white-space:nowrap;
+              "
+            >
+              ${e(casa)}
+            </b>
+          </div>
+
+          <div
+            style="
+              display:flex;
+              align-items:center;
+              gap:9px;
+              min-width:0;
+            "
+          >
+            ${
+              logoFora
+                ? `
+                  <img
+                    src="${e(logoFora)}"
+                    alt=""
+                    style="
+                      width:32px;
+                      height:32px;
+                      object-fit:contain;
+                      flex:none;
+                    "
+                  >
+                `
+                : ""
+            }
+
+            <b
+              style="
+                overflow:hidden;
+                text-overflow:ellipsis;
+                white-space:nowrap;
+              "
+            >
+              ${e(fora)}
+            </b>
+          </div>
+
+        </div>
+
+        <div
+          style="
+            min-width:70px;
+            text-align:center;
+          "
+        >
+
+          <div
+            style="
+              font-size:20px;
+              font-weight:900;
+              ${
+                aoVivo
+                  ? "color:#2ee58b;"
+                  : ""
+              }
+            "
+          >
+            ${e(centro)}
+          </div>
+
+          <div
+            style="
+              margin-top:5px;
+              font-size:12px;
+              font-weight:800;
+              ${
+                aoVivo
+                  ? "color:#2ee58b;"
+                  : "opacity:.65;"
+              }
+            "
+          >
+            ${e(textoStatusJogo(j))}
+          </div>
+
+        </div>
+
+        <div
+          style="
+            text-align:right;
+            font-weight:800;
+            color:#2ee58b;
+            font-size:14px;
+          "
+        >
+          Análise ›
+        </div>
+
+      </div>
+
+    </div>
+  `;
+}
+
 function render(lista) {
   const shown = document.querySelector("#shown");
   const total = document.querySelector("#total");
@@ -68,146 +391,264 @@ function render(lista) {
 
   if (status) {
     status.textContent =
-      `${lista.length} partida(s) encontrada(s).`;
+      mode === "ao-vivo"
+        ? `${lista.length} partida(s) ao vivo.`
+        : `${lista.length} partida(s) de hoje.`;
   }
 
   if (!list) return;
 
-  list.innerHTML = lista.map((j) => {
-    const id = Number(j.id);
+  if (!lista.length) {
+    list.innerHTML = `
+      <div
+        style="
+          padding:30px 20px;
+          text-align:center;
+          opacity:.7;
+        "
+      >
+        ${
+          mode === "ao-vivo"
+            ? "Nenhuma partida ao vivo neste momento."
+            : "Nenhuma partida encontrada."
+        }
+      </div>
+    `;
 
-    const casa =
-      j.teams?.home?.name || "-";
+    return;
+  }
 
-    const fora =
-      j.teams?.away?.name || "-";
+  const ordenados = [...lista].sort((a, b) => {
+    const prioridadeA = prioridadeLiga(a);
+    const prioridadeB = prioridadeLiga(b);
 
-    const casaId =
-      j.teams?.home?.id;
-
-    const foraId =
-      j.teams?.away?.id;
-
-    const campeonato =
-      j.league?.name || "-";
-
-    const pais =
-      j.league?.country || "-";
-
-    const golsCasa =
-      j.goals?.home ?? "-";
-
-    const golsFora =
-      j.goals?.away ?? "-";
-
-    const descricao =
-      j.status?.long || "";
-
-    const statusCurto =
-      j.status?.short || "";
-
-    const minuto =
-      j.status?.elapsed;
-
-    const logoCasa =
-      j.teams?.home?.logo ||
-      (
-        casaId
-          ? `https://gateway.profianalisesbet.com.br/media/football/teams/${casaId}.png`
-          : ""
-      );
-
-    const logoFora =
-      j.teams?.away?.logo ||
-      (
-        foraId
-          ? `https://gateway.profianalisesbet.com.br/media/football/teams/${foraId}.png`
-          : ""
-      );
-
-    let textoStatus = descricao;
-
-    if (statusCurto === "NS" && j.date) {
-      try {
-        textoStatus =
-          new Date(j.date).toLocaleTimeString(
-            "pt-BR",
-            {
-              hour: "2-digit",
-              minute: "2-digit"
-            }
-          );
-      } catch (_) {}
+    if (prioridadeA !== prioridadeB) {
+      return prioridadeA - prioridadeB;
     }
 
+    const ligaA =
+      String(a.league?.name || "");
+
+    const ligaB =
+      String(b.league?.name || "");
+
+    const comparacaoLiga =
+      ligaA.localeCompare(
+        ligaB,
+        "pt-BR"
+      );
+
+    if (comparacaoLiga !== 0) {
+      return comparacaoLiga;
+    }
+
+    return (
+      new Date(a.date || 0).getTime() -
+      new Date(b.date || 0).getTime()
+    );
+  });
+
+  const grupos = new Map();
+
+  for (const j of ordenados) {
+    const leagueId =
+      j.league?.id || 0;
+
+    const season =
+      j.league?.season || "";
+
+    const chave =
+      `${leagueId}-${season}`;
+
+    if (!grupos.has(chave)) {
+      grupos.set(
+        chave,
+        {
+          league: j.league || {},
+          prioridade: prioridadeLiga(j),
+          jogos: []
+        }
+      );
+    }
+
+    grupos.get(chave).jogos.push(j);
+  }
+
+  const principais = [];
+  const outras = [];
+
+  for (const grupo of grupos.values()) {
+    if (grupo.prioridade < 999) {
+      principais.push(grupo);
+    } else {
+      outras.push(grupo);
+    }
+  }
+
+  principais.sort(
+    (a, b) =>
+      a.prioridade - b.prioridade
+  );
+
+  outras.sort((a, b) => {
+    const paisA =
+      String(a.league?.country || "");
+
+    const paisB =
+      String(b.league?.country || "");
+
+    const p =
+      paisA.localeCompare(
+        paisB,
+        "pt-BR"
+      );
+
+    if (p !== 0) return p;
+
+    return String(
+      a.league?.name || ""
+    ).localeCompare(
+      String(b.league?.name || ""),
+      "pt-BR"
+    );
+  });
+
+  function blocoLiga(grupo) {
+    const liga =
+      grupo.league?.name || "Competição";
+
+    const pais =
+      grupo.league?.country || "";
+
+    const logo =
+      grupo.league?.logo || "";
+
     return `
-      <div
-        class="game"
-        onclick="abrirJogo(${id})"
-        style="cursor:pointer"
+      <section
+        style="
+          margin:0 0 18px;
+          border:1px solid rgba(46,229,139,.22);
+          border-radius:18px;
+          overflow:hidden;
+          background:rgba(255,255,255,.015);
+        "
       >
-
-        <div class="league">
-          ${e(campeonato)} · ${e(pais)}
-        </div>
-
-        <div class="teams">
-
-          <div class="team">
-
-            ${
-              logoCasa
-                ? `<img src="${e(logoCasa)}" alt="">`
-                : ""
-            }
-
-            <b>${e(casa)}</b>
-
-          </div>
-
-          <div class="score">
-            ${e(golsCasa)} × ${e(golsFora)}
-          </div>
-
-          <div class="team">
-
-            <b>${e(fora)}</b>
-
-            ${
-              logoFora
-                ? `<img src="${e(logoFora)}" alt="">`
-                : ""
-            }
-
-          </div>
-
-        </div>
-
-        <div class="game-status">
-          ${e(textoStatus)}
-
-          ${
-            minuto != null &&
-            !["FT", "AET", "PEN"].includes(statusCurto)
-              ? ` · ${e(minuto)}'`
-              : ""
-          }
-        </div>
 
         <div
           style="
-            text-align:center;
-            margin-top:10px;
-            color:#2ee58b;
-            font-weight:bold;
+            display:flex;
+            align-items:center;
+            gap:10px;
+            padding:14px 16px;
+            background:rgba(255,255,255,.045);
           "
         >
-          Ver análise ›
+
+          ${
+            logo
+              ? `
+                <img
+                  src="${e(logo)}"
+                  alt=""
+                  style="
+                    width:30px;
+                    height:30px;
+                    object-fit:contain;
+                  "
+                >
+              `
+              : ""
+          }
+
+          <div style="min-width:0">
+
+            <div
+              style="
+                font-size:12px;
+                opacity:.65;
+                font-weight:800;
+                text-transform:uppercase;
+              "
+            >
+              ${e(pais)}
+            </div>
+
+            <div
+              style="
+                font-size:17px;
+                font-weight:900;
+              "
+            >
+              ${e(liga)}
+            </div>
+
+          </div>
+
+          <div
+            style="
+              margin-left:auto;
+              opacity:.6;
+              font-weight:800;
+            "
+          >
+            ${grupo.jogos.length}
+          </div>
+
         </div>
 
+        ${grupo.jogos.map(cardJogo).join("")}
+
+      </section>
+    `;
+  }
+
+  let html = "";
+
+  if (principais.length) {
+    html += `
+      <div
+        style="
+          margin:8px 0 12px;
+          font-size:13px;
+          font-weight:900;
+          letter-spacing:.08em;
+          text-transform:uppercase;
+          color:#2ee58b;
+        "
+      >
+        Principais competições
       </div>
     `;
-  }).join("");
+
+    html +=
+      principais
+        .map(blocoLiga)
+        .join("");
+  }
+
+  if (outras.length) {
+    html += `
+      <div
+        style="
+          margin:24px 0 12px;
+          font-size:13px;
+          font-weight:900;
+          letter-spacing:.08em;
+          text-transform:uppercase;
+          opacity:.7;
+        "
+      >
+        Outras competições
+      </div>
+    `;
+
+    html +=
+      outras
+        .map(blocoLiga)
+        .join("");
+  }
+
+  list.innerHTML = html;
 }
 
 function linhaEstatistica(nome, casa, fora) {
