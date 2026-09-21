@@ -74,39 +74,71 @@ function render(lista) {
   if (!list) return;
 
   list.innerHTML = lista.map((j) => {
-    const id = Number(j.fixture_id);
+    const id = Number(j.id);
 
-    const casa = j.jogo?.casa || "-";
-    const fora = j.jogo?.fora || "-";
+    const casa =
+      j.teams?.home?.name || "-";
 
-    const casaId = j.jogo?.casa_id;
-    const foraId = j.jogo?.fora_id;
+    const fora =
+      j.teams?.away?.name || "-";
+
+    const casaId =
+      j.teams?.home?.id;
+
+    const foraId =
+      j.teams?.away?.id;
 
     const campeonato =
-      j.campeonato?.nome || "-";
+      j.league?.name || "-";
 
     const pais =
-      j.campeonato?.pais || "-";
+      j.league?.country || "-";
 
     const golsCasa =
-      j.placar?.casa ?? "-";
+      j.goals?.home ?? "-";
 
     const golsFora =
-      j.placar?.fora ?? "-";
+      j.goals?.away ?? "-";
 
     const descricao =
-      j.tempo?.descricao || "";
+      j.status?.long || "";
+
+    const statusCurto =
+      j.status?.short || "";
 
     const minuto =
-      j.tempo?.minuto;
+      j.status?.elapsed;
 
-    const logoCasa = casaId
-      ? `https://gateway.profianalisesbet.com.br/media/football/teams/${casaId}.png`
-      : "";
+    const logoCasa =
+      j.teams?.home?.logo ||
+      (
+        casaId
+          ? `https://gateway.profianalisesbet.com.br/media/football/teams/${casaId}.png`
+          : ""
+      );
 
-    const logoFora = foraId
-      ? `https://gateway.profianalisesbet.com.br/media/football/teams/${foraId}.png`
-      : "";
+    const logoFora =
+      j.teams?.away?.logo ||
+      (
+        foraId
+          ? `https://gateway.profianalisesbet.com.br/media/football/teams/${foraId}.png`
+          : ""
+      );
+
+    let textoStatus = descricao;
+
+    if (statusCurto === "NS" && j.date) {
+      try {
+        textoStatus =
+          new Date(j.date).toLocaleTimeString(
+            "pt-BR",
+            {
+              hour: "2-digit",
+              minute: "2-digit"
+            }
+          );
+      } catch (_) {}
+    }
 
     return `
       <div
@@ -152,9 +184,11 @@ function render(lista) {
         </div>
 
         <div class="game-status">
-          ${e(descricao)}
+          ${e(textoStatus)}
+
           ${
-            minuto != null
+            minuto != null &&
+            !["FT", "AET", "PEN"].includes(statusCurto)
               ? ` · ${e(minuto)}'`
               : ""
           }
@@ -1524,22 +1558,22 @@ if (q) {
 
         const casa =
           String(
-            j.jogo?.casa || ""
+            j.teams?.home?.name || ""
           ).toLowerCase();
 
         const fora =
           String(
-            j.jogo?.fora || ""
+            j.teams?.away?.name || ""
           ).toLowerCase();
 
         const campeonato =
           String(
-            j.campeonato?.nome || ""
+            j.league?.name || ""
           ).toLowerCase();
 
         const pais =
           String(
-            j.campeonato?.pais || ""
+            j.league?.country || ""
           ).toLowerCase();
 
         return (
