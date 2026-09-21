@@ -521,6 +521,51 @@ away_logo:
 
 function mostrarAnalise(d) {
   const j = d.jogo;
+  const jogadoresTimes =
+  Array.isArray(d.jogadores)
+    ? d.jogadores
+    : [];
+
+const jogadoresLista = jogadoresTimes.flatMap((time) => {
+  const nomeTime = time.team?.name || "";
+
+  return (time.players || []).map((item) => {
+    const s = item.statistics?.[0] || {};
+
+    return {
+      time: nomeTime,
+      nome: item.player?.name || "-",
+      foto: item.player?.photo || "",
+      numero: s.games?.number ?? "-",
+      posicao: s.games?.position || "-",
+      minutos: s.games?.minutes ?? 0,
+      nota: s.games?.rating || "-",
+
+      chutes: s.shots?.total ?? 0,
+      chutesGol: s.shots?.on ?? 0,
+
+      gols: s.goals?.total ?? 0,
+      assistencias: s.goals?.assists ?? 0,
+
+      passes: s.passes?.total ?? 0,
+      passesChave: s.passes?.key ?? 0,
+
+      desarmes: s.tackles?.total ?? 0,
+
+      faltasCometidas:
+        s.fouls?.committed ?? 0,
+
+      faltasSofridas:
+        s.fouls?.drawn ?? 0,
+
+      amarelos:
+        s.cards?.yellow ?? 0,
+
+      vermelhos:
+        s.cards?.red ?? 0
+    };
+  });
+});
 
   const estatisticas =
     d.estatisticas || [];
@@ -909,7 +954,84 @@ function mostrarAnalise(d) {
           `
           : ""
             }
-            <section
+            ${jogadoresLista.length > 0 ? `
+<section
+  class="panel"
+  style="
+    margin-top:25px;
+    padding:20px;
+  "
+>
+  <h2 style="text-align:center">
+    Jogadores
+  </h2>
+
+  ${jogadoresLista.map((p) => `
+    <div style="
+      padding:16px 0;
+      border-bottom:1px solid rgba(255,255,255,.10);
+    ">
+      <div style="
+        display:flex;
+        align-items:center;
+        gap:12px;
+        margin-bottom:12px;
+      ">
+        ${p.foto ? `
+          <img
+            src="${p.foto}"
+            alt="${p.nome}"
+            style="
+              width:48px;
+              height:48px;
+              border-radius:50%;
+              object-fit:cover;
+            "
+          >
+        ` : ""}
+
+        <div>
+          <div style="font-weight:700;font-size:17px">
+            ${p.numero !== "-" ? `#${p.numero} ` : ""}${p.nome}
+          </div>
+
+          <div style="opacity:.7">
+            ${p.time} · ${p.posicao}
+          </div>
+        </div>
+      </div>
+
+      <div style="
+        display:grid;
+        grid-template-columns:repeat(2,1fr);
+        gap:8px;
+        font-size:14px;
+      ">
+        <div>⏱ Minutos: <b>${p.minutos}</b></div>
+        <div>⭐ Nota: <b>${p.nota}</b></div>
+
+        <div>⚽ Gols: <b>${p.gols}</b></div>
+        <div>🎯 Assistências: <b>${p.assistencias}</b></div>
+
+        <div>🥅 Chutes: <b>${p.chutes}</b></div>
+        <div>🎯 No gol: <b>${p.chutesGol}</b></div>
+
+        <div>❌ Faltas cometidas: <b>${p.faltasCometidas}</b></div>
+        <div>✅ Faltas sofridas: <b>${p.faltasSofridas}</b></div>
+
+        <div>🟨 Amarelos: <b>${p.amarelos}</b></div>
+        <div>🟥 Vermelhos: <b>${p.vermelhos}</b></div>
+
+        <div>👟 Passes: <b>${p.passes}</b></div>
+        <div>🔑 Passes-chave: <b>${p.passesChave}</b></div>
+
+        <div>🛡 Desarmes: <b>${p.desarmes}</b></div>
+      </div>
+    </div>
+  `).join("")}
+</section>
+` : ""}
+<section
         class="panel"
         style="
           margin-top:25px;
