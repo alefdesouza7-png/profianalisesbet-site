@@ -806,7 +806,110 @@ function mostrarAnalise(d) {
           `
       }
 
-      <section
+            ${
+        Array.isArray(d.eventos) && d.eventos.length > 0
+          ? `
+            <section
+              class="panel"
+              style="
+                margin-top:25px;
+                padding:20px;
+              "
+            >
+              <h2 style="text-align:center">
+                Eventos da partida
+              </h2>
+
+              ${d.eventos.map((ev) => {
+                const minuto =
+                  ev.time?.elapsed != null
+                    ? `${ev.time.elapsed}${ev.time?.extra ? `+${ev.time.extra}` : ""}'`
+                    : "-";
+
+                const tipo = ev.type || "";
+                const detalhe = ev.detail || "";
+
+                const jogador =
+                  ev.player?.name || "";
+
+                const assistencia =
+                  ev.assist?.name || "";
+
+                const time =
+                  ev.team?.name || "";
+
+                let icone = "⚽";
+
+                if (tipo === "Card") {
+                  icone =
+                    detalhe.toLowerCase().includes("red")
+                      ? "🟥"
+                      : "🟨";
+                } else if (tipo === "subst") {
+                  icone = "🔄";
+                } else if (tipo === "Var") {
+                  icone = "📺";
+                }
+
+                return `
+                  <div
+                    style="
+                      padding:14px 4px;
+                      border-bottom:1px solid rgba(255,255,255,.08);
+                    "
+                  >
+                    <div
+                      style="
+                        display:flex;
+                        gap:12px;
+                        align-items:flex-start;
+                      "
+                    >
+                      <strong
+                        style="
+                          min-width:45px;
+                          color:#2ee58b;
+                        "
+                      >
+                        ${e(minuto)}
+                      </strong>
+
+                      <span style="font-size:20px">
+                        ${icone}
+                      </span>
+
+                      <div>
+                        <strong>
+                          ${e(jogador || detalhe || tipo)}
+                        </strong>
+
+                        ${
+                          time
+                            ? `<div style="opacity:.75;margin-top:3px">${e(time)}</div>`
+                            : ""
+                        }
+
+                        ${
+                          detalhe
+                            ? `<div style="opacity:.65;margin-top:3px">${e(detalhe)}</div>`
+                            : ""
+                        }
+
+                        ${
+                          assistencia
+                            ? `<div style="opacity:.65;margin-top:3px">Assistência: ${e(assistencia)}</div>`
+                            : ""
+                        }
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            </section>
+          `
+          : ""
+            }
+            <section
         class="panel"
         style="
           margin-top:25px;
