@@ -1251,21 +1251,32 @@ function secaoHistorico(d, j) {
           Histórico dos jogadores
         </h2>
 
-        <p style="
-          text-align:center;
-          opacity:.75;
-        ">
+        <p
+          style="
+            text-align:center;
+            opacity:.75;
+          "
+        >
           Histórico indisponível para esta partida.
         </p>
       </section>
     `;
   }
 
-  const casa =
-    h.casa || h.home;
+  const casa = h.casa || h.home;
+  const fora = h.fora || h.away;
 
-  const fora =
-    h.fora || h.away;
+  const nomeCasa =
+    casa?.team?.name ||
+    j.home_team ||
+    j.teams?.home?.name ||
+    "Casa";
+
+  const nomeFora =
+    fora?.team?.name ||
+    j.away_team ||
+    j.teams?.away?.name ||
+    "Fora";
 
   return `
     <section
@@ -1279,46 +1290,416 @@ function secaoHistorico(d, j) {
         Histórico dos jogadores
       </h2>
 
-      <p style="
-        text-align:center;
-        opacity:.75;
-      ">
-        Casa e fora · últimas 5 e últimas 10 partidas
+      <p
+        style="
+          text-align:center;
+          opacity:.75;
+          margin-bottom:18px;
+        "
+      >
+        Compare jogadores por período e estatística
       </p>
 
-      ${blocoHistoricoTime(
-        casa?.team?.name ||
-        j.home_team ||
-        "Casa",
-        casa,
-        5
-      )}
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          justify-content:center;
+          flex-wrap:wrap;
+          margin-bottom:12px;
+        "
+      >
+        <button
+          id="histCasa"
+          class="btn"
+          type="button"
+          onclick="mudarHistoricoTime('casa')"
+        >
+          ${e(nomeCasa)}
+        </button>
 
-      ${blocoHistoricoTime(
-        casa?.team?.name ||
-        j.home_team ||
-        "Casa",
-        casa,
-        10
-      )}
+        <button
+          id="histFora"
+          class="btn"
+          type="button"
+          onclick="mudarHistoricoTime('fora')"
+        >
+          ${e(nomeFora)}
+        </button>
+      </div>
 
-      ${blocoHistoricoTime(
-        fora?.team?.name ||
-        j.away_team ||
-        "Fora",
-        fora,
-        5
-      )}
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          justify-content:center;
+          flex-wrap:wrap;
+          margin-bottom:16px;
+        "
+      >
+        <button
+          id="hist5"
+          class="btn"
+          type="button"
+          onclick="mudarHistoricoPeriodo(5)"
+        >
+          Últimas 5
+        </button>
 
-      ${blocoHistoricoTime(
-        fora?.team?.name ||
-        j.away_team ||
-        "Fora",
-        fora,
-        10
-      )}
+        <button
+          id="hist10"
+          class="btn"
+          type="button"
+          onclick="mudarHistoricoPeriodo(10)"
+        >
+          Últimas 10
+        </button>
+      </div>
+
+      <div
+        style="
+          margin-bottom:10px;
+          font-size:13px;
+          opacity:.72;
+          text-align:center;
+        "
+      >
+        Ordenar jogadores por
+      </div>
+
+      <div
+        style="
+          display:flex;
+          gap:7px;
+          overflow-x:auto;
+          padding-bottom:10px;
+          margin-bottom:15px;
+        "
+      >
+        ${[
+          ["nota", "⭐ Avaliação"],
+          ["gols", "⚽ Gols"],
+          ["assistencias", "🎯 Assistências"],
+          ["chutes", "🥅 Chutes"],
+          ["chutesGol", "🎯 No gol"],
+          ["faltasCometidas", "🟨 Faltas"],
+          ["faltasSofridas", "💥 Faltas sofridas"],
+          ["desarmes", "🛡️ Desarmes"],
+          ["passes", "👟 Passes"],
+          ["passesChave", "🔑 Passes-chave"],
+          ["minutos", "⏱️ Minutos"]
+        ].map(([campo, texto]) => `
+          <button
+            class="btn histFiltro"
+            data-campo="${campo}"
+            type="button"
+            onclick="mudarHistoricoFiltro('${campo}')"
+            style="
+              white-space:nowrap;
+              flex:0 0 auto;
+              padding:9px 12px;
+              font-size:12px;
+            "
+          >
+            ${texto}
+          </button>
+        `).join("")}
+      </div>
+
+      <div id="historicoJogadoresConteudo"></div>
     </section>
   `;
+}
+
+let historicoTimeSelecionado = "casa";
+let historicoPeriodoSelecionado = 5;
+let historicoFiltroSelecionado = "nota";
+let historicoDadosAtuais = null;
+let historicoJogoAtual = null;
+
+function numeroHistorico(valor) {
+  if (
+    valor === null ||
+    valor === undefined ||
+    valor === "" ||
+    valor === "-"
+  ) {
+    return 0;
+  }
+
+  const n = Number(
+    String(valor)
+      .replace(",", ".")
+      .replace("%", "")
+  );
+
+  return Number.isFinite(n) ? n : 0;
+}
+
+function mudarHistoricoTime(time) {
+  historicoTimeSelecionado = time;
+  renderHistoricoInterativo();
+}
+
+function mudarHistoricoPeriodo(periodo) {
+  historicoPeriodoSelecionado = Number(periodo);
+  renderHistoricoInterativo();
+}
+
+function mudarHistoricoFiltro(campo) {
+  historicoFiltroSelecionado = campo;
+  renderHistoricoInterativo();
+}
+
+function atualizarBotoesHistorico() {
+  const ativo = el => {
+    if (!el) return;
+
+    el.style.background = "rgba(46,229,139,.20)";
+    el.style.borderColor = "rgba(46,229,139,.75)";
+    el.style.color = "#2ee58b";
+  };
+
+  const inativo = el => {
+    if (!el) return;
+
+    el.style.background = "";
+    el.style.borderColor = "";
+    el.style.color = "";
+  };
+
+  const casa = document.getElementById("histCasa");
+  const fora = document.getElementById("histFora");
+  const cinco = document.getElementById("hist5");
+  const dez = document.getElementById("hist10");
+
+  historicoTimeSelecionado === "casa"
+    ? ativo(casa)
+    : inativo(casa);
+
+  historicoTimeSelecionado === "fora"
+    ? ativo(fora)
+    : inativo(fora);
+
+  historicoPeriodoSelecionado === 5
+    ? ativo(cinco)
+    : inativo(cinco);
+
+  historicoPeriodoSelecionado === 10
+    ? ativo(dez)
+    : inativo(dez);
+
+  document
+    .querySelectorAll(".histFiltro")
+    .forEach(botao => {
+      if (
+        botao.dataset.campo ===
+        historicoFiltroSelecionado
+      ) {
+        ativo(botao);
+      } else {
+        inativo(botao);
+      }
+    });
+}
+
+function renderHistoricoInterativo() {
+  const destino =
+    document.getElementById(
+      "historicoJogadoresConteudo"
+    );
+
+  if (!destino || !historicoDadosAtuais) {
+    return;
+  }
+
+  const h = historicoDadosAtuais;
+
+  const time =
+    historicoTimeSelecionado === "casa"
+      ? (h.casa || h.home)
+      : (h.fora || h.away);
+
+  const periodo =
+    historicoPeriodoSelecionado === 10
+      ? time?.ultimas10
+      : time?.ultimas5;
+
+  const jogadoresOriginais =
+    Array.isArray(periodo?.jogadores)
+      ? periodo.jogadores
+      : [];
+
+  const jogadores =
+    [...jogadoresOriginais].sort(
+      (a, b) =>
+        numeroHistorico(
+          b?.[historicoFiltroSelecionado]
+        ) -
+        numeroHistorico(
+          a?.[historicoFiltroSelecionado]
+        )
+    );
+
+  const partidas =
+    Array.isArray(periodo?.partidas)
+      ? periodo.partidas
+      : [];
+
+  const nomeTime =
+    time?.team?.name ||
+    (
+      historicoTimeSelecionado === "casa"
+        ? historicoJogoAtual?.home_team
+        : historicoJogoAtual?.away_team
+    ) ||
+    (
+      historicoTimeSelecionado === "casa"
+        ? historicoJogoAtual?.teams?.home?.name
+        : historicoJogoAtual?.teams?.away?.name
+    ) ||
+    (
+      historicoTimeSelecionado === "casa"
+        ? "Casa"
+        : "Fora"
+    );
+
+  const nomesFiltros = {
+    nota: "Avaliação",
+    gols: "Gols",
+    assistencias: "Assistências",
+    chutes: "Chutes",
+    chutesGol: "Chutes no gol",
+    faltasCometidas: "Faltas cometidas",
+    faltasSofridas: "Faltas sofridas",
+    desarmes: "Desarmes",
+    passes: "Passes",
+    passesChave: "Passes-chave",
+    minutos: "Minutos"
+  };
+
+  destino.innerHTML = `
+    <div
+      style="
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+        margin:12px 0 16px;
+        padding:12px 14px;
+        border-radius:14px;
+        background:rgba(255,255,255,.035);
+        border:1px solid rgba(46,229,139,.16);
+      "
+    >
+      <div>
+        <div
+          style="
+            font-size:17px;
+            font-weight:800;
+          "
+        >
+          ${e(nomeTime)}
+        </div>
+
+        <div
+          style="
+            opacity:.65;
+            font-size:12px;
+            margin-top:3px;
+          "
+        >
+          Últimas ${historicoPeriodoSelecionado}
+          · ${partidas.length} partida(s)
+          · ${jogadores.length} jogador(es)
+        </div>
+      </div>
+
+      <div
+        style="
+          text-align:right;
+          font-size:12px;
+          color:#2ee58b;
+          font-weight:700;
+        "
+      >
+        Ranking<br>
+        ${e(
+          nomesFiltros[
+            historicoFiltroSelecionado
+          ] || "Estatística"
+        )}
+      </div>
+    </div>
+
+    ${
+      jogadores.length
+        ? jogadores
+            .map(
+              (p, indice) => `
+                <div
+                  style="
+                    position:relative;
+                    margin-bottom:12px;
+                  "
+                >
+                  <div
+                    style="
+                      position:absolute;
+                      top:10px;
+                      left:10px;
+                      z-index:2;
+                      min-width:26px;
+                      height:26px;
+                      padding:0 7px;
+                      display:flex;
+                      align-items:center;
+                      justify-content:center;
+                      border-radius:20px;
+                      background:#2ee58b;
+                      color:#002b1d;
+                      font-weight:900;
+                      font-size:12px;
+                    "
+                  >
+                    ${indice + 1}º
+                  </div>
+
+                  ${cardJogadorHistorico(
+                    p,
+                    partidas.length
+                  )}
+                </div>
+              `
+            )
+            .join("")
+        : `
+          <p
+            style="
+              text-align:center;
+              opacity:.7;
+              padding:20px 5px;
+            "
+          >
+            Sem estatísticas de jogadores
+            disponíveis para este período.
+          </p>
+        `
+    }
+  `;
+
+  atualizarBotoesHistorico();
+}
+
+function iniciarHistoricoInterativo(d, j) {
+  historicoDadosAtuais = d?.historico || null;
+  historicoJogoAtual = j || null;
+
+  historicoTimeSelecionado = "casa";
+  historicoPeriodoSelecionado = 5;
+  historicoFiltroSelecionado = "nota";
+
+  renderHistoricoInterativo();
 }
 
 function mostrarAnalise(d) {
@@ -2007,8 +2388,10 @@ function mostrarAnalise(d) {
 
       </section>
 
-    </main>
+      </main>
   `;
+
+  iniciarHistoricoInterativo(d, j);
 }
 
 const q =
