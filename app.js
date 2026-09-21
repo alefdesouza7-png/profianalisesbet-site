@@ -13,12 +13,21 @@ async function load(m = "jogos") {
   }
 
   try {
-    const r = await fetch(`${API}${m === "ao-vivo" ? "/live" : "/jogos"}`);
+    const rota = m === "ao-vivo" ? "/live" : "/jogos";
+
+    const r = await fetch(`${API}${rota}`);
     const d = await r.json();
 
-    jogos = m === "ao-vivo" ? (d.jogos || d.dados || []) : (d.jogos || []);
+    if (!r.ok || !d.ok) {
+      throw new Error(d.error || "Erro ao carregar jogos");
+    }
+
+    jogos = Array.isArray(d.jogos) ? d.jogos : [];
+
     render(jogos);
   } catch (err) {
+    console.error(err);
+
     if (status) {
       status.textContent = "Erro ao carregar jogos.";
     }
@@ -35,84 +44,136 @@ function e(v) {
   }[c]));
 }
 
-function render(lista) {
-  const shown = document.querySelector("#shown");
-  const total = document.querySelector("#total");
-  const status = document.querySelector("#status");
-  const list = document.querySelector("#list");
-
-  if (shown) shown.textContent = lista.length;
-  if (total) total.textContent = jogos.length;
-
-  if (status) {
-    status.textContent = `${lista.length} partida(s) encontrada(s).`;
-  }
-
-  if (!list) return;
-
-  list.innerHTML = lista.map((j) => `
-    <div
-      class="game"
-      onclick="abrirJogo(${Number(j.fixture_id)})"
-      style="cursor:pointer"
-    >
-      <div class="league">
-        ${e(j.campeonato?.nome)} · ${e(j.campeonato?.pais)}
-      </div>
-
-      <div class="teams">
-
-        <div class="team">
-          ${
-            j.jogo?.casa_id
-              ? `<img src="${e("https://gateway.profianalisesbet.com.br/media/football/teams/" + j.jogo?.casa_id + ".png")}" alt="">`
-              : ""
-          }
-
-          <b>${e(j.jogo?.casa)}</b>
-        </div>
-
-        <div class="score">
-          ${e(j.placar?.casa)} × ${e(j.placar?.fora)}
-        </div>
-
-        <div class="team">
-          <b>${e(j.jogo?.fora)}</b>
-
-          ${
-            j.jogo?.fora_id
-              ? `<img src="${e("https://gateway.profianalisesbet.com.br/media/football/teams/" + j.jogo?.fora_id + ".png")}" alt="">`
-              : ""
-          }
-        </div>
-
-      </div>
-
-      <div class="game-status">
-        ${e(j.tempo?.descricao)}
-        ${j.tempo?.minuto != null ? ` · ${e(j.tempo?.minuto)}'` : ""}
-      </div>
-
-      <div
-        style="
-          text-align:center;
-          margin-top:10px;
-          color:#2ee58b;
-          font-weight:bold;
-        "
-      >
-        Ver análise ›
-      </div>
-    </div>
-  `).join("");
-}
-
 function valor(v) {
   if (v === null || v === undefined || v === "") {
     return "-";
   }
 
   return e(v);
+}
+
+function render(lista) {
+  const shown = document.querySelector("#shown");
+  const total = document.querySelector("#total");
+  const status = document.querySelector("#status");
+  const list = document.querySelector("#list");
+
+  if (shown) {
+    shown.textContent = lista.length;
+  }
+
+  if (total) {
+    total.textContent = jogos.length;
+  }
+
+  if (status) {
+    status.textContent =
+      `${lista.length} partida(s) encontrada(s).`;
+  }
+
+  if (!list) return;
+
+  list.innerHTML = lista.map((j) => {
+    const id = Number(j.fixture_id);
+
+    const casa = j.jogo?.casa || "-";
+    const fora = j.jogo?.fora || "-";
+
+    const casaId = j.jogo?.casa_id;
+    const foraId = j.jogo?.fora_id;
+
+    const campeonato =
+      j.campeonato?.nome || "-";
+
+    const pais =
+      j.campeonato?.pais || "-";
+
+    const golsCasa =
+      j.placar?.casa ?? "-";
+
+    const golsFora =
+      j.placar?.fora ?? "-";
+
+    const descricao =
+      j.tempo?.descricao || "";
+
+    const minuto =
+      j.tempo?.minuto;
+
+    const logoCasa = casaId
+      ? `https://gateway.profianalisesbet.com.br/media/football/teams/${casaId}.png`
+      : "";
+
+    const logoFora = foraId
+      ? `https://gateway.profianalisesbet.com.br/media/football/teams/${foraId}.png`
+      : "";
+
+    return `
+      <div
+        class="game"
+        onclick="abrirJogo(${id})"
+        style="cursor:pointer"
+      >
+
+        <div class="league">
+          ${e(campeonato)} · ${e(pais)}
+        </div>
+
+        <div class="teams">
+
+          <div class="team">
+
+            ${
+              logoCasa
+                ? `<img src="${e(logoCasa)}" alt="">`
+                : ""
+            }
+
+            <b>${e(casa)}</b>
+
+          </div>
+
+          <div class="score">
+            ${e(golsCasa)} × ${e(golsFora)}
+          </div>
+
+          <div class="team">
+
+            <b>${e(fora)}</b>
+
+            ${
+              logoFora
+                ? `<img src="${e(logoFora)}" alt="">`
+                : ""
+            }
+
+          </div>
+
+        </div>
+
+        <div class="game-status">
+          ${e(descricao)}
+          ${
+            minuto != null
+              ? ` · ${e(minuto)}'`
+              : ""
+          }
+        </div>
+
+        <div
+          style="
+            text-align:center;
+            margin-top:10px;
+            color:#2ee58b;
+            font-weight:bold;
+          "
+        >
+          Ver análise ›
+        </div>
+
+      </div>
+    `;
+  }).join("");
 }
 
 function linhaEstatistica(nome, casa, fora) {
@@ -139,6 +200,75 @@ function linhaEstatistica(nome, casa, fora) {
   `;
 }
 
+function pegarEstatistica(lista, tipo) {
+  if (!Array.isArray(lista)) {
+    return null;
+  }
+
+  const item = lista.find(
+    (x) =>
+      String(x?.type || "")
+        .toLowerCase() ===
+      String(tipo).toLowerCase()
+  );
+
+  return item?.value ?? null;
+}
+
+function normalizarEstatisticas(dados) {
+  if (!Array.isArray(dados)) {
+    return [];
+  }
+
+  return dados.map((item) => {
+    const stats = item.statistics || [];
+
+    return {
+      team_id: item.team?.id,
+      team_name: item.team?.name,
+
+      chutes_gol:
+        pegarEstatistica(stats, "Shots on Goal"),
+
+      chutes_fora:
+        pegarEstatistica(stats, "Shots off Goal"),
+
+      total_chutes:
+        pegarEstatistica(stats, "Total Shots"),
+
+      chutes_bloqueados:
+        pegarEstatistica(stats, "Blocked Shots"),
+
+      escanteios:
+        pegarEstatistica(stats, "Corner Kicks"),
+
+      impedimentos:
+        pegarEstatistica(stats, "Offsides"),
+
+      posse:
+        pegarEstatistica(stats, "Ball Possession"),
+
+      faltas:
+        pegarEstatistica(stats, "Fouls"),
+
+      cartoes_amarelos:
+        pegarEstatistica(stats, "Yellow Cards"),
+
+      cartoes_vermelhos:
+        pegarEstatistica(stats, "Red Cards"),
+
+      defesas_goleiro:
+        pegarEstatistica(stats, "Goalkeeper Saves"),
+
+      passes:
+        pegarEstatistica(stats, "Total passes"),
+
+      passes_certos:
+        pegarEstatistica(stats, "Passes accurate")
+    };
+  });
+}
+
 async function abrirJogo(id) {
   document.body.innerHTML = `
     <main
@@ -148,6 +278,7 @@ async function abrirJogo(id) {
         margin:auto;
       "
     >
+
       <button
         onclick="location.reload()"
         style="
@@ -169,23 +300,181 @@ async function abrirJogo(id) {
         <h2>Carregando análise...</h2>
 
         <p>
-          Buscando estatísticas da partida.
+          Buscando dados, estatísticas e jogadores.
         </p>
       </div>
+
     </main>
   `;
 
   try {
-    const r = await fetch(`${API}/api/jogo/${id}`);
-    const d = await r.json();
+    const [
+      fixtureResult,
+      statsResult,
+      eventsResult,
+      playersResult
+    ] = await Promise.allSettled([
 
-    if (!r.ok || !d.ok) {
-      throw new Error(d.erro || "Erro ao carregar partida");
+      fetch(
+        `${API}/fixture?id=${encodeURIComponent(id)}`
+      ).then(async (r) => {
+        const d = await r.json();
+
+        if (!r.ok || !d.ok) {
+          throw new Error(
+            d.error || "Erro ao carregar partida"
+          );
+        }
+
+        return d;
+      }),
+
+      fetch(
+        `${API}/fixture/statistics?id=${encodeURIComponent(id)}`
+      ).then(async (r) => {
+        const d = await r.json();
+
+        if (!r.ok || !d.ok) {
+          throw new Error(
+            d.error || "Erro nas estatísticas"
+          );
+        }
+
+        return d;
+      }),
+
+      fetch(
+        `${API}/fixture/events?id=${encodeURIComponent(id)}`
+      ).then(async (r) => {
+        const d = await r.json();
+
+        if (!r.ok || !d.ok) {
+          throw new Error(
+            d.error || "Erro nos eventos"
+          );
+        }
+
+        return d;
+      }),
+
+      fetch(
+        `${API}/fixture/players?id=${encodeURIComponent(id)}`
+      ).then(async (r) => {
+        const d = await r.json();
+
+        if (!r.ok || !d.ok) {
+          throw new Error(
+            d.error || "Erro nos jogadores"
+          );
+        }
+
+        return d;
+      })
+
+    ]);
+
+    if (fixtureResult.status !== "fulfilled") {
+      throw fixtureResult.reason;
     }
+
+    const fixtureData =
+      fixtureResult.value;
+
+    const fixture =
+      fixtureData.dados?.[0];
+
+    if (!fixture) {
+      throw new Error(
+        "Partida não encontrada na API."
+      );
+    }
+
+    const estatisticasBrutas =
+      statsResult.status === "fulfilled"
+        ? statsResult.value.estatisticas || []
+        : [];
+
+    const eventos =
+      eventsResult.status === "fulfilled"
+        ? eventsResult.value.eventos || []
+        : [];
+
+    const jogadores =
+      playersResult.status === "fulfilled"
+        ? playersResult.value.jogadores || []
+        : [];
+
+    const estatisticas =
+      normalizarEstatisticas(
+        estatisticasBrutas
+      );
+
+    const d = {
+      jogo: {
+        fixture_id:
+          fixture.fixture?.id,
+
+        competition:
+          fixture.league?.name,
+
+        competition_country:
+          fixture.league?.country,
+
+        round:
+          fixture.league?.round,
+
+        home_team_id:
+          fixture.teams?.home?.id,
+
+        away_team_id:
+          fixture.teams?.away?.id,
+
+        home_team:
+          fixture.teams?.home?.name,
+
+        away_team:
+          fixture.teams?.away?.name,
+
+        home_logo:
+          fixture.teams?.home?.logo,
+
+        away_logo:
+          fixture.teams?.away?.logo,
+
+        home_goals:
+          fixture.goals?.home,
+
+        away_goals:
+          fixture.goals?.away,
+
+        status:
+          fixture.fixture?.status?.long,
+
+        status_short:
+          fixture.fixture?.status?.short,
+
+        minute:
+          fixture.fixture?.status?.elapsed,
+
+        date:
+          fixture.fixture?.date
+      },
+
+      estatisticas,
+
+      estatisticas_disponiveis:
+        estatisticas.length >= 2,
+
+      eventos,
+
+      jogadores
+    };
 
     mostrarAnalise(d);
 
   } catch (err) {
+    console.error(err);
+
     document.body.innerHTML = `
       <main
         style="
@@ -194,20 +483,33 @@ async function abrirJogo(id) {
           margin:auto;
         "
       >
+
         <button
           onclick="location.reload()"
           style="
             padding:12px 18px;
             margin-bottom:20px;
+            cursor:pointer;
           "
         >
           ← Voltar
         </button>
 
-        <div class="panel" style="padding:25px">
-          <h2>Não foi possível carregar a análise</h2>
-          <p>${e(err.message)}</p>
+        <div
+          class="panel"
+          style="padding:25px"
+        >
+          <h2>
+            Não foi possível carregar a análise
+          </h2>
+
+          <p>${e(
+            err?.message ||
+            "Erro ao carregar partida"
+          )}</p>
+
         </div>
+
       </main>
     `;
   }
@@ -216,16 +518,21 @@ async function abrirJogo(id) {
 function mostrarAnalise(d) {
   const j = d.jogo;
 
-  const estatisticas = d.estatisticas || [];
+  const estatisticas =
+    d.estatisticas || [];
 
   const casa =
     estatisticas.find(
-      (x) => Number(x.team_id) === Number(j.home_team_id)
+      (x) =>
+        Number(x.team_id) ===
+        Number(j.home_team_id)
     ) || {};
 
   const fora =
     estatisticas.find(
-      (x) => Number(x.team_id) === Number(j.away_team_id)
+      (x) =>
+        Number(x.team_id) ===
+        Number(j.away_team_id)
     ) || {};
 
   const possuiEstatisticas =
@@ -259,7 +566,9 @@ function mostrarAnalise(d) {
           text-align:center;
         "
       >
-        ${e(j.competition)} · ${e(j.competition_country)}
+        ${e(j.competition)}
+        ·
+        ${e(j.competition_country)}
       </p>
 
       <div
@@ -274,6 +583,7 @@ function mostrarAnalise(d) {
       >
 
         <div>
+
           ${
             j.home_logo
               ? `
@@ -292,11 +602,15 @@ function mostrarAnalise(d) {
           }
 
           <div>
-            <strong>${e(j.home_team)}</strong>
+            <strong>
+              ${e(j.home_team)}
+            </strong>
           </div>
+
         </div>
 
         <div>
+
           <div
             style="
               font-size:30px;
@@ -308,13 +622,25 @@ function mostrarAnalise(d) {
             ${valor(j.away_goals)}
           </div>
 
-          <div style="margin-top:5px;opacity:.7">
+          <div
+            style="
+              margin-top:5px;
+              opacity:.7;
+            "
+          >
             ${e(j.status)}
-            ${j.minute != null ? ` · ${e(j.minute)}'` : ""}
+
+            ${
+              j.minute != null
+                ? ` · ${e(j.minute)}'`
+                : ""
+            }
           </div>
+
         </div>
 
         <div>
+
           ${
             j.away_logo
               ? `
@@ -333,8 +659,11 @@ function mostrarAnalise(d) {
           }
 
           <div>
-            <strong>${e(j.away_team)}</strong>
+            <strong>
+              ${e(j.away_team)}
+            </strong>
           </div>
+
         </div>
 
       </div>
@@ -349,6 +678,7 @@ function mostrarAnalise(d) {
                 padding:20px;
               "
             >
+
               <h2 style="text-align:center">
                 Estatísticas da partida
               </h2>
@@ -362,9 +692,15 @@ function mostrarAnalise(d) {
                   margin:20px 0 5px;
                 "
               >
-                <strong>${e(j.home_team)}</strong>
+                <strong>
+                  ${e(j.home_team)}
+                </strong>
+
                 <span></span>
-                <strong>${e(j.away_team)}</strong>
+
+                <strong>
+                  ${e(j.away_team)}
+                </strong>
               </div>
 
               ${linhaEstatistica(
@@ -466,44 +802,89 @@ function mostrarAnalise(d) {
           `
       }
 
+      <section
+        class="panel"
+        style="
+          margin-top:25px;
+          padding:20px;
+        "
+      >
+        <h2 style="text-align:center">
+          Dados disponíveis
+        </h2>
+
+        <p style="text-align:center;opacity:.8">
+          Eventos: ${d.eventos?.length || 0}
+          ·
+          Times com dados de jogadores:
+          ${d.jogadores?.length || 0}
+        </p>
+
+      </section>
+
     </main>
   `;
 }
 
-const q = document.querySelector("#q");
+const q =
+  document.querySelector("#q");
 
 if (q) {
   q.oninput = () => {
-    const s = q.value.toLowerCase();
+    const s =
+      q.value
+        .trim()
+        .toLowerCase();
 
     render(
-      jogos.filter((j) =>
-        String(j.home_team || "")
-          .toLowerCase()
-          .includes(s) ||
+      jogos.filter((j) => {
 
-        String(j.away_team || "")
-          .toLowerCase()
-          .includes(s) ||
+        const casa =
+          String(j.jogo?.casa || "")
+            .toLowerCase();
 
-        String(j.competition || "")
-          .toLowerCase()
-          .includes(s)
-      )
+        const fora =
+          String(j.jogo?.fora || "")
+            .toLowerCase();
+
+        const campeonato =
+          String(j.campeonato?.nome || "")
+            .toLowerCase();
+
+        const pais =
+          String(j.campeonato?.pais || "")
+            .toLowerCase();
+
+        return (
+          casa.includes(s) ||
+          fora.includes(s) ||
+          campeonato.includes(s) ||
+          pais.includes(s)
+        );
+      })
     );
   };
 }
 
-const todos = document.querySelector("#todos");
-const live = document.querySelector("#live");
+const todos =
+  document.querySelector("#todos");
+
+const live =
+  document.querySelector("#live");
 
 if (todos) {
-  todos.onclick = () => load("jogos");
+  todos.onclick = () =>
+    load("jogos");
 }
 
 if (live) {
-  live.onclick = () => load("ao-vivo");
+  live.onclick = () =>
+    load("ao-vivo");
 }
 
 load();
-setInterval(() => load(mode), 30000);
+
+setInterval(
+  () => load(mode),
+  30000
+);
