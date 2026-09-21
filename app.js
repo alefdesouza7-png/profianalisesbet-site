@@ -430,7 +430,11 @@ async function abrirJogo(id) {
       fixtureResult.value;
 
     const fixture =
-      fixtureData.dados?.[0];
+  fixtureData.dados?.[0] ||
+  fixtureData.fixture ||
+  fixtureData.response?.[0] ||
+  fixtureData.jogo ||
+  fixtureData.dados;
 
     if (!fixture) {
       throw new Error(
