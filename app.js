@@ -1382,7 +1382,7 @@ function secaoHistorico(d, j) {
           ["assistencias", "🎯 Assistências"],
           ["chutes", "🥅 Chutes"],
           ["chutesGol", "🎯 No gol"],
-          ["faltasCometidas", "🟨 Faltas"],
+          ["faltasCometidas", "❌ Faltas cometidas"],
           ["faltasSofridas", "💥 Faltas sofridas"],
           ["desarmes", "🛡️ Desarmes"],
           ["passes", "👟 Passes"],
