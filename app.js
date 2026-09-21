@@ -1179,10 +1179,36 @@ function blocoHistoricoTime(titulo, dados, periodo) {
     return "";
   }
 
-  const grupo =
-    periodo === 5
-      ? dados.ultimas5
-      : dados.ultimas10;
+  let grupo;
+let tituloPeriodo;
+
+if (periodo === 5) {
+  grupo = dados.ultimas5;
+  tituloPeriodo = "Últimas 5";
+} else if (periodo === 10) {
+  grupo = dados.ultimas10;
+  tituloPeriodo = "Últimas 10";
+} else if (periodo === "campeonato") {
+  const campeonatos = Array.isArray(dados.campeonatos)
+    ? dados.campeonatos
+    : [];
+
+  const campeonatoSelecionado =
+    campeonatos.find(
+      (c) => String(c.id) === String(window.historicoCampeonatoId)
+    ) || campeonatos[0];
+
+  grupo = campeonatoSelecionado || {
+    partidas: [],
+    jogadores: []
+  };
+
+  tituloPeriodo =
+    campeonatoSelecionado?.nome || "Campeonato";
+} else {
+  grupo = dados.ultimas5;
+  tituloPeriodo = "Últimas 5";
+}
 
   const partidas =
     Array.isArray(grupo?.partidas)
@@ -1203,7 +1229,7 @@ function blocoHistoricoTime(titulo, dados, periodo) {
         margin-bottom:6px;
         color:#2ee58b;
       ">
-        ${e(titulo)} · Últimas ${periodo}
+        ${e(titulo)} · ${e(tituloPeriodo)}
       </h3>
 
       <div style="
