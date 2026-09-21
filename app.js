@@ -542,13 +542,8 @@ function render(lista) {
     const pais =
       grupo.league?.country || "";
 
-    const leagueId =
-  grupo.league?.id;
-
-const logo =
-  leagueId
-    ? `https://gateway.profianalisesbet.com.br/media/football/leagues/${leagueId}.png`
-    : "";
+    const logo =
+  grupo.league?.logo || "";
 
     return `
       <section
@@ -577,6 +572,7 @@ const logo =
                 <img
                   src="${e(logo)}"
                   alt=""
+                  onerror="this.style.display='none'"
                   style="
                     width:30px;
                     height:30px;
