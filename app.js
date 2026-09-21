@@ -1380,6 +1380,14 @@ function secaoHistorico(d, j) {
         >
           Últimas 10
         </button>
+        <button
+  id="histCampeonato"
+  class="btn"
+  type="button"
+  onclick="mudarHistoricoPeriodo('campeonato')"
+>
+  Campeonato
+</button>
       </div>
 
       <div
@@ -1468,7 +1476,11 @@ function mudarHistoricoTime(time) {
 }
 
 function mudarHistoricoPeriodo(periodo) {
-  historicoPeriodoSelecionado = Number(periodo);
+  historicoPeriodoSelecionado =
+    periodo === "campeonato"
+      ? "campeonato"
+      : Number(periodo);
+
   renderHistoricoInterativo();
 }
 
@@ -1498,6 +1510,7 @@ function atualizarBotoesHistorico() {
   const fora = document.getElementById("histFora");
   const cinco = document.getElementById("hist5");
   const dez = document.getElementById("hist10");
+  const campeonato = document.getElementById("histCampeonato");
 
   historicoTimeSelecionado === "casa"
     ? ativo(casa)
@@ -1514,7 +1527,9 @@ function atualizarBotoesHistorico() {
   historicoPeriodoSelecionado === 10
     ? ativo(dez)
     : inativo(dez);
-
+historicoPeriodoSelecionado === "campeonato"
+  ? ativo(campeonato)
+  : inativo(campeonato);
   document
     .querySelectorAll(".histFiltro")
     .forEach(botao => {
