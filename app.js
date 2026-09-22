@@ -1269,6 +1269,23 @@ async function fetchOpcional(url) {
   }
 }
 
+function voltarParaHome() {
+  const url = new URL(window.location.href);
+
+  url.searchParams.delete("jogo");
+
+  window.history.replaceState(
+    {},
+    "",
+    url.pathname + url.search
+  );
+
+  partidaAtual = null;
+  historicoAtual = null;
+  jogadoresAtuais = null;
+
+  window.location.reload();
+}
 async function abrirJogo(id) {
     id = Number(id);
 
@@ -2596,7 +2613,7 @@ function renderPaginaPartida() {
         "
       >
         <button
-          onclick="abrirJogo(partidaAtual.id)"
+          onclick="voltarParaHome()"
           style="
             border:0;
             width:42px;
