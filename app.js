@@ -2585,7 +2585,7 @@ function renderPaginaPartida() {
         "
       >
         <button
-          onclick="location.reload()"
+          onclick="abrirJogo(partidaAtual.id)"
           style="
             border:0;
             width:42px;
