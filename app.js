@@ -2039,7 +2039,7 @@ const textoJogadores =
                     style="
                       position:absolute;
                       top:10px;
-                      left:10px;
+                      right:10px;
                       z-index:2;
                       min-width:26px;
                       height:26px;
