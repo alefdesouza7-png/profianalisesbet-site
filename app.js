@@ -1314,12 +1314,16 @@ function secaoHistorico(d, j) {
 const escudoCasa =
   casa?.team?.logo ||
   j?.teams?.home?.logo ||
-  "";
+  (casa?.teamId
+    ? `${API}/logo/team/${casa.teamId}`
+    : "");
 
 const escudoFora =
   fora?.team?.logo ||
   j?.teams?.away?.logo ||
-  "";
+  (fora?.teamId
+    ? `${API}/logo/team/${fora.teamId}`
+    : "");
   return `
     <section
       class="panel"
@@ -1357,7 +1361,7 @@ const escudoFora =
           type="button"
           onclick="mudarHistoricoTime('casa')"
         >
-          ${escudoCasa ? `<img src="${e(escudoCasa)}" alt="" style="width:22px;height:22px;object-fit:contain;vertical-align:middle;margin-right:6px;">` : ""}${e(nomeCasa)}
+          ${escudoCasa ? `<img src="${e(escudoCasa)}" alt="" style="width:26px;height:26px;object-fit:contain;margin-right:7px;vertical-align:middle;" onerror="this.style.display='none'">` : ""}${e(nomeCasa)}
         </button>
 
         <button
@@ -1366,7 +1370,7 @@ const escudoFora =
           type="button"
           onclick="mudarHistoricoTime('fora')"
         >
-          ${escudoFora ? `<img src="${e(escudoFora)}" alt="" style="width:22px;height:22px;object-fit:contain;vertical-align:middle;margin-right:6px;">` : ""}${e(nomeFora)}
+          ${escudoFora ? `<img src="${e(escudoFora)}" alt="" style="width:26px;height:26px;object-fit:contain;margin-right:7px;vertical-align:middle;" onerror="this.style.display='none'">` : ""}${e(nomeFora)}
         </button>
       </div>
 
