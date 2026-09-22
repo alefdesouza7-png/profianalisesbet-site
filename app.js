@@ -1051,7 +1051,7 @@ function cardJogadorHistorico(p, jogos) {
   const partidas = numeroSeguro(
     p.partidas ?? p.jogos ?? p.aparicoes ?? p.games
   );
-
+const fotoJogador = p.foto || p.photo || (p.id ? `${API}/logo/player/${p.id}` : "");
   return `
     <div style="
       padding:14px 0;
@@ -1063,18 +1063,19 @@ function cardJogadorHistorico(p, jogos) {
         gap:12px;
         margin-bottom:10px;
       ">
-        ${p.foto ? `
-          <img
-            src="${e(p.foto)}"
-            alt=""
-            style="
-              width:44px;
-              height:44px;
-              border-radius:50%;
-              object-fit:cover;
-            "
-          >
-        ` : ""}
+        ${fotoJogador ? `
+  <img
+    src="${e(fotoJogador)}"
+    alt="${e(p.nome || p.name || "Jogador")}"
+    style="
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      object-fit:cover;
+    "
+    onerror="this.style.display='none'"
+  >
+` : ""}
 
         <div>
           <div style="font-weight:800">
