@@ -320,10 +320,69 @@ function textoStatusJogo(j) {
 async function load(m = "jogos") {
   mode = m;
 
-  const status = document.querySelector("#status");
+  const status =
+    document.querySelector("#status");
+
+  const games =
+    document.querySelector("#games");
+
+  const total =
+    document.querySelector("#total");
+
+  const shown =
+    document.querySelector("#shown");
+
+  const title =
+    document.querySelector("#title");
+
+  const btnJogos =
+    document.querySelector("#todos");
+
+  const btnLive =
+    document.querySelector("#aoVivo");
 
   if (status) {
-    status.textContent = "Carregando...";
+    status.textContent =
+      m === "ao-vivo"
+        ? "Buscando partidas ao vivo..."
+        : "Carregando partidas...";
+  }
+
+  if (games) {
+    games.innerHTML = `
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+
+        <strong>
+          Carregando jogos...
+        </strong>
+
+        <span>
+          Buscando dados do Profianalises
+        </span>
+      </div>
+    `;
+  }
+
+  if (btnJogos) {
+    btnJogos.classList.toggle(
+      "active",
+      m !== "ao-vivo"
+    );
+  }
+
+  if (btnLive) {
+    btnLive.classList.toggle(
+      "active",
+      m === "ao-vivo"
+    );
+  }
+
+  if (title) {
+    title.textContent =
+      m === "ao-vivo"
+        ? "Jogos ao vivo"
+        : "Jogos de hoje";
   }
 
   try {
@@ -332,28 +391,176 @@ async function load(m = "jogos") {
         ? "/live"
         : "/jogos";
 
-    const r = await fetch(`${API}${rota}`);
-    const d = await r.json();
+    const r = await fetch(
+      `${API}${rota}`,
+      {
+        cache: "no-store"
+      }
+    );
 
-    if (!r.ok || !d.ok) {
+    if (!r.ok) {
       throw new Error(
-        d.error ||
-        "Erro ao carregar jogos"
+        `HTTP ${r.status}`
       );
     }
 
-    jogos = Array.isArray(d.jogos)
-      ? d.jogos
-      : [];
+    const d = await r.json();
+
+    if (d?.ok === false) {
+      throw new Error(
+        d.error ||
+        d.erro ||
+        "Erro retornado pela API"
+      );
+    }
+
+    let lista = [];
+
+    if (Array.isArray(d)) {
+      lista = d;
+    }
+
+    else if (
+      Array.isArray(d?.jogos)
+    ) {
+      lista = d.jogos;
+    }
+
+    else if (
+      Array.isArray(d?.dados)
+    ) {
+      lista = d.dados;
+    }
+
+    else if (
+      Array.isArray(d?.response)
+    ) {
+      lista = d.response;
+    }
+
+    else if (
+      Array.isArray(d?.fixtures)
+    ) {
+      lista = d.fixtures;
+    }
+
+    else if (
+      Array.isArray(
+        d?.data?.response
+      )
+    ) {
+      lista =
+        d.data.response;
+    }
+
+    else if (
+      Array.isArray(
+        d?.data?.jogos
+      )
+    ) {
+      lista =
+        d.data.jogos;
+    }
+
+    else if (
+      Array.isArray(
+        d?.data
+      )
+    ) {
+      lista =
+        d.data;
+    }
+
+    jogos = lista;
+
+    if (status) {
+      status.textContent =
+        m === "ao-vivo"
+          ? `${jogos.length} partida(s) ao vivo`
+          : `${jogos.length} partida(s) disponível(is)`;
+    }
+
+    if (total) {
+      total.textContent =
+        jogos.length;
+    }
+
+    if (shown) {
+      shown.textContent =
+        jogos.length;
+    }
 
     render(jogos);
 
   } catch (err) {
-    console.error(err);
+    console.error(
+      "Erro ao carregar jogos:",
+      err
+    );
+
+    jogos = [];
+
+    if (total) {
+      total.textContent = "0";
+    }
+
+    if (shown) {
+      shown.textContent = "0";
+    }
 
     if (status) {
       status.textContent =
-        "Erro ao carregar jogos.";
+        "Não foi possível carregar as partidas.";
+    }
+
+    if (games) {
+      games.innerHTML = `
+        <div
+          style="
+            padding:24px 14px;
+            text-align:center;
+          "
+        >
+          <div
+            style="
+              color:#ff6575;
+              font-weight:950;
+              margin-bottom:7px;
+            "
+          >
+            Erro ao carregar jogos
+          </div>
+
+          <div
+            style="
+              font-size:11px;
+              opacity:.6;
+              line-height:1.5;
+            "
+          >
+            ${e(
+              err?.message ||
+              "Falha de comunicação com a API."
+            )}
+          </div>
+
+          <button
+            type="button"
+            onclick="load('${m}')"
+            style="
+              margin-top:14px;
+              padding:10px 16px;
+              border-radius:9px;
+              border:1px solid rgba(0,242,151,.3);
+              background:rgba(0,242,151,.1);
+              color:#00f297;
+              font-weight:900;
+            "
+          >
+            Tentar novamente
+          </button>
+        </div>
+      `;
     }
   }
 }
