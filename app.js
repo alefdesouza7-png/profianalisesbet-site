@@ -1440,7 +1440,8 @@ function secaoHistorico(d, j) {
         `).join("")}
       </div>
 
-      <div id="historicoJogadoresConteudo"></div>
+      <div id="historicoCampeonatosLista"></div>
+<div id="historicoJogadoresConteudo"></div>
     </section>
   `;
 }
@@ -1469,7 +1470,117 @@ function numeroHistorico(valor) {
 
   return Number.isFinite(n) ? n : 0;
 }
+function mudarHistoricoCampeonato(id) {
+  window.historicoCampeonatoSelecionado = id;
+  renderHistoricoInterativo();
+}
 
+function renderCampeonatosHistorico(time) {
+  const destino = document.getElementById("historicoCampeonatosLista");
+
+  if (!destino) return;
+
+  if (historicoPeriodoSelecionado !== "campeonato") {
+    destino.innerHTML = "";
+    return;
+  }
+
+  const partidasCampeonato =
+  Array.isArray(time?.ultimas10?.partidas)
+    ? time.ultimas10.partidas
+    : [];
+
+const mapaCampeonatos = new Map();
+
+partidasCampeonato.forEach((partida) => {
+  const liga = partida?.liga;
+
+  if (!liga?.id) return;
+
+  const id = String(liga.id);
+
+  if (!mapaCampeonatos.has(id)) {
+    mapaCampeonatos.set(id, {
+      id: liga.id,
+      name: liga.name || liga.nome || "Campeonato",
+      pais: liga.pais || liga.country || "",
+      partidas: []
+    });
+  }
+
+  mapaCampeonatos.get(id).partidas.push(partida);
+});
+
+const campeonatos = Array.from(mapaCampeonatos.values());
+
+  if (!campeonatos.length) {
+    destino.innerHTML = `
+      <div style="
+        text-align:center;
+        opacity:.7;
+        margin:0 0 15px;
+      ">
+        Nenhum campeonato disponível
+      </div>
+    `;
+    return;
+  }
+
+  if (
+    !window.historicoCampeonatoSelecionado ||
+    !campeonatos.some(
+      c =>
+        String(c.id) ===
+        String(window.historicoCampeonatoSelecionado)
+    )
+  ) {
+    window.historicoCampeonatoSelecionado =
+      campeonatos[0]?.id;
+  }
+
+  destino.innerHTML = `
+    <div style="
+      text-align:center;
+      margin:4px 0 8px;
+      font-size:13px;
+      opacity:.72;
+    ">
+      Escolha o campeonato
+    </div>
+
+    <div style="
+      display:flex;
+      gap:8px;
+      overflow-x:auto;
+      padding-bottom:12px;
+      margin-bottom:8px;
+    ">
+      ${campeonatos.map(c => {
+        const ativo =
+          String(c.id) ===
+          String(window.historicoCampeonatoSelecionado);
+
+        return `
+          <button
+            type="button"
+            class="btn"
+            onclick="mudarHistoricoCampeonato('${c.id}')"
+            style="
+              white-space:nowrap;
+              flex:0 0 auto;
+              padding:9px 13px;
+              ${ativo
+                ? "background:rgba(46,229,139,.20);border-color:rgba(46,229,139,.75);color:#2ee58b;"
+                : ""}
+            "
+          >
+            ${e(c.name || c.nome || "Campeonato")}
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
 function mudarHistoricoTime(time) {
   historicoTimeSelecionado = time;
   renderHistoricoInterativo();
@@ -1560,11 +1671,134 @@ function renderHistoricoInterativo() {
     historicoTimeSelecionado === "casa"
       ? (h.casa || h.home)
       : (h.fora || h.away);
+  
+renderCampeonatosHistorico(time);
+  let periodo;
 
-  const periodo =
-    historicoPeriodoSelecionado === 10
-      ? time?.ultimas10
-      : time?.ultimas5;
+if (historicoPeriodoSelecionado === 10) {
+  periodo = time?.ultimas10;
+} else if (historicoPeriodoSelecionado === "campeonato") {
+  const partidasCampeonato =
+  Array.isArray(time?.ultimas10?.partidas)
+    ? time.ultimas10.partidas
+    : [];
+
+const mapaCampeonatos = new Map();
+
+partidasCampeonato.forEach((partida) => {
+  const liga = partida?.liga;
+
+  if (!liga?.id) return;
+
+  const id = String(liga.id);
+
+  if (!mapaCampeonatos.has(id)) {
+    mapaCampeonatos.set(id, {
+      id: liga.id,
+      name: liga.name || liga.nome || "Campeonato",
+      partidas: [],
+      jogadores: []
+    });
+  }
+
+  const campeonato = mapaCampeonatos.get(id);
+
+  campeonato.partidas.push(partida);
+
+  if (Array.isArray(partida?.jogadores)) {
+  partida.jogadores.forEach((jogador) => {
+    const jogadorId =
+      jogador?.id ||
+      jogador?.playerId ||
+      jogador?.nome;
+
+    if (!jogadorId) return;
+
+    let agregado = campeonato.jogadores.find(
+      (j) =>
+        String(j.id || j.playerId || j.nome) ===
+        String(jogadorId)
+    );
+
+    if (!agregado) {
+      agregado = {
+        ...jogador,
+        partidas: 0,
+        minutos: 0,
+        chutes: 0,
+        chutesGol: 0,
+        gols: 0,
+        assistencias: 0,
+        passes: 0,
+        passesChave: 0,
+        faltasCometidas: 0,
+        faltasSofridas: 0,
+        desarmes: 0,
+        amarelos: 0,
+        vermelhos: 0,
+        somaNotas: 0,
+        notasValidas: 0
+      };
+
+      campeonato.jogadores.push(agregado);
+    }
+
+    agregado.partidas += 1;
+
+    [
+      "minutos",
+      "chutes",
+      "chutesGol",
+      "gols",
+      "assistencias",
+      "passes",
+      "passesChave",
+      "faltasCometidas",
+      "faltasSofridas",
+      "desarmes",
+      "amarelos",
+      "vermelhos"
+    ].forEach((campo) => {
+      agregado[campo] += numeroHistorico(
+        jogador?.[campo]
+      );
+    });
+
+    const nota = numeroHistorico(jogador?.nota);
+
+    if (nota > 0) {
+      agregado.somaNotas += nota;
+      agregado.notasValidas += 1;
+
+      agregado.nota =
+        agregado.somaNotas /
+        agregado.notasValidas;
+    }
+  });
+  }
+});
+
+const campeonatos =
+  Array.from(mapaCampeonatos.values());
+
+periodo =
+  campeonatos.find(
+    (c) =>
+      String(c.id) ===
+      String(window.historicoCampeonatoSelecionado)
+  ) ||
+  campeonatos[0] || {
+    partidas: [],
+    jogadores: []
+  };
+
+if (periodo?.id) {
+  window.historicoCampeonatoSelecionado =
+    periodo.id;
+}
+} else {
+  periodo = time?.ultimas5;
+}
 
   const jogadoresOriginais =
     Array.isArray(periodo?.jogadores)
