@@ -1382,7 +1382,6 @@ async function abrirJogo(id) {
       fetchOpcional(
         `${API}/fixture/odds?id=${encodeURIComponent(id)}`
       )
-
     ]);
 
     const fixture =
@@ -1391,6 +1390,24 @@ async function abrirJogo(id) {
       fixtureData.response?.[0] ||
       fixtureData.jogo ||
       fixtureData.dados;
+    const homeIdH2H =
+  fixture?.teams?.home?.id ||
+  fixture?.home?.id ||
+  fixture?.casa?.id ||
+  null;
+
+const awayIdH2H =
+  fixture?.teams?.away?.id ||
+  fixture?.away?.id ||
+  fixture?.fora?.id ||
+  null;
+
+const h2hData =
+  homeIdH2H && awayIdH2H
+    ? await fetchOpcional(
+        `${API}/h2h?home=${encodeURIComponent(homeIdH2H)}&away=${encodeURIComponent(awayIdH2H)}&last=10`
+      )
+    : null;
 
     if (!fixture) {
       throw new Error(
@@ -1435,6 +1452,13 @@ async function abrirJogo(id) {
       );
 
     partidaAtual = {
+  h2h:
+    h2hData?.jogos ||
+    h2hData?.partidas ||
+    h2hData?.response ||
+    [],
+
+  id:
       id:
         fixture.fixture?.id ||
         id,
