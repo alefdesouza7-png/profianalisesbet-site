@@ -1505,6 +1505,19 @@ async function abrirJogo(id) {
       odds
     };
 
+    const homeId = partidaAtual?.teams?.home?.id;
+const awayId = partidaAtual?.teams?.away?.id;
+
+if (homeId && awayId) {
+  const h2hData = await fetchOpcional(
+    `${API}/h2h?home=${homeId}&away=${awayId}&last=10`
+  );
+
+  partidaAtual.h2h =
+    h2hData?.jogos ||
+    h2hData?.response ||
+    [];
+}
     historicoAtual =
       historicoData || null;
 
