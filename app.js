@@ -1270,6 +1270,17 @@ async function fetchOpcional(url) {
 }
 
 async function abrirJogo(id) {
+    id = Number(id);
+
+  if (id) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("jogo", id);
+    window.history.replaceState(
+      { jogo: id },
+      "",
+      url.toString()
+    );
+  }
   document.body.innerHTML = `
     <main
       style="
@@ -8588,15 +8599,29 @@ window.mudarCriterioRankingTime =
 
 document.addEventListener(
   "DOMContentLoaded",
-  () => {
+  async () => {
     try {
-      load();
+      const params =
+        new URLSearchParams(
+          window.location.search
+        );
+
+      const jogoId =
+        Number(params.get("jogo"));
+
+      if (jogoId) {
+        await abrirJogo(jogoId);
+      } else {
+        await load();
+      }
+
     } catch (erro) {
       console.error(
         "Falha ao iniciar Profianalises:",
         erro
       );
+
+      await load();
     }
   }
 );
-    
