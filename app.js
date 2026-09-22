@@ -1391,6 +1391,25 @@ async function abrirJogo(id) {
       fixtureData.jogo ||
       fixtureData.dados;
 
+    const homeIdH2H =
+  fixture?.teams?.home?.id ||
+  fixture?.home?.id ||
+  fixture?.casa?.id ||
+  null;
+
+const awayIdH2H =
+  fixture?.teams?.away?.id ||
+  fixture?.away?.id ||
+  fixture?.fora?.id ||
+  null;
+
+const h2hData =
+  homeIdH2H && awayIdH2H
+    ? await fetchOpcional(
+        `${API}/h2h?home=${encodeURIComponent(homeIdH2H)}&away=${encodeURIComponent(awayIdH2H)}&last=10`
+      )
+    : null;
+
     if (!fixture) {
       throw new Error(
         "Partida não encontrada."
@@ -1434,6 +1453,12 @@ async function abrirJogo(id) {
       );
 
     partidaAtual = {
+      h2h:
+  h2hData?.jogos ||
+  h2hData?.partidas ||
+  h2hData?.response ||
+  [],
+      
   id:
       id:
         fixture.fixture?.id ||
@@ -1505,26 +1530,7 @@ async function abrirJogo(id) {
       odds
     };
 
-    const homeId =
-  partidaAtual?.fixture?.teams?.home?.id ||
-  partidaAtual?.home?.id ||
-  partidaAtual?.casa?.id;
-
-const awayId =
-  partidaAtual?.fixture?.teams?.away?.id ||
-  partidaAtual?.away?.id ||
-  partidaAtual?.fora?.id;
-
-if (homeId && awayId) {
-  const h2hData = await fetchOpcional(
-    `${API}/h2h?home=${homeId}&away=${awayId}&last=10`
-  );
-
-  partidaAtual.h2h =
-    h2hData?.jogos ||
-    h2hData?.response ||
-    [];
-}
+    c
 
 historicoAtual =
   historicoData || null;
