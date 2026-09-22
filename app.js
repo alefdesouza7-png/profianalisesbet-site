@@ -1838,7 +1838,24 @@ if (periodo?.id) {
         ? "Casa"
         : "Fora"
     );
+const nomePeriodoHistorico =
+  historicoPeriodoSelecionado === "campeonato"
+    ? (
+        periodo?.name ||
+        periodo?.nome ||
+        "Campeonato"
+      )
+    : `Últimas ${historicoPeriodoSelecionado}`;
 
+const textoPartidas =
+  `${partidas.length} ${
+    partidas.length === 1 ? "partida" : "partidas"
+  }`;
+
+const textoJogadores =
+  `${jogadores.length} ${
+    jogadores.length === 1 ? "jogador" : "jogadores"
+  }`;
   const nomesFiltros = {
     nota: "Avaliação",
     gols: "Gols",
@@ -1884,9 +1901,9 @@ if (periodo?.id) {
             margin-top:3px;
           "
         >
-          Últimas ${historicoPeriodoSelecionado}
-          · ${partidas.length} partida(s)
-          · ${jogadores.length} jogador(es)
+          ${e(nomePeriodoHistorico)}
+· ${e(textoPartidas)}
+· ${e(textoJogadores)}
         </div>
       </div>
 
