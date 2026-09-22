@@ -80,10 +80,17 @@ function horaCurta(data) {
 }
 
 function fotoJogador(p = {}) {
+  const jogador =
+    typeof p === "object"
+      ? p
+      : { id: p };
+
   return (
-    p.foto ||
-    p.photo ||
-    (p.id ? `${API}/logo/player/${p.id}` : "")
+    jogador.foto ||
+    jogador.photo ||
+    (jogador.id
+      ? `${API}/logo/player/${jogador.id}`
+      : "")
   );
 }
 
@@ -274,6 +281,26 @@ function jogoEstaAoVivo(j) {
     "LIVE"
   ].includes(status);
 }
+function isStatusAoVivo(status = {}) {
+  const short =
+    String(
+      status?.short ||
+      status ||
+      ""
+    ).toUpperCase();
+
+  return [
+    "1H",
+    "HT",
+    "2H",
+    "ET",
+    "BT",
+    "P",
+    "LIVE",
+    "SUSP",
+    "INT"
+  ].includes(short);
+}
 
 function horarioJogo(j) {
   return horaCurta(
@@ -420,89 +447,66 @@ async function load(m = "jogos") {
       lista = d;
     }
 
-    else if (
-      Array.isArray(d?.jogos)
-    ) {
+    else if (Array.isArray(d?.jogos)) {
       lista = d.jogos;
     }
 
-    else if (
-      Array.isArray(d?.dados)
-    ) {
+    else if (Array.isArray(d?.dados)) {
       lista = d.dados;
     }
 
-    else if (
-      Array.isArray(d?.response)
-    ) {
+    else if (Array.isArray(d?.response)) {
       lista = d.response;
     }
 
-    else if (
-      Array.isArray(d?.fixtures)
-    ) {
+    else if (Array.isArray(d?.fixtures)) {
       lista = d.fixtures;
     }
 
-    else if (
-      Array.isArray(
-        d?.data?.response
-      )
-    ) {
-      lista =
-        d.data.response;
+    else if (Array.isArray(d?.data?.response)) {
+      lista = d.data.response;
     }
 
-    else if (
-      Array.isArray(
-        d?.data?.jogos
-      )
-    ) {
-      lista =
-        d.data.jogos;
+    else if (Array.isArray(d?.data?.jogos)) {
+      lista = d.data.jogos;
     }
 
-    else if (
-      Array.isArray(
-        d?.data
-      )
-    ) {
-      lista =
-        d.data;
+    else if (Array.isArray(d?.data)) {
+      lista = d.data;
     }
 
     if (m === "ao-vivo") {
-  jogos = lista;
-} else {
-  const hojeBrasil = new Intl.DateTimeFormat(
-    "en-CA",
-    {
-      timeZone: "America/Sao_Paulo",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
-    }
-  ).format(new Date());
+      jogos = lista;
+    } else {
+      const hojeBrasil = new Intl.DateTimeFormat(
+        "en-CA",
+        {
+          timeZone: "America/Sao_Paulo",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit"
+        }
+      ).format(new Date());
 
-  jogos = lista.filter(j => {
-    const dataJogo =
-      j.date ||
-      j.fixture?.date;
+      jogos = lista.filter(j => {
+        const dataJogo =
+          j.date ||
+          j.fixture?.date;
 
-    if (!dataJogo) return false;
+        if (!dataJogo) return false;
 
-    const diaJogo = new Intl.DateTimeFormat(
-      "en-CA",
-      {
-        timeZone: "America/Sao_Paulo",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-      }
-    ).format(new Date(dataJogo));
+        const diaJogo = new Intl.DateTimeFormat(
+          "en-CA",
+          {
+            timeZone: "America/Sao_Paulo",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit"
+          }
+        ).format(new Date(dataJogo));
 
-    return diaJogo === hojeBrasil;
-  });
+        return diaJogo === hojeBrasil;
+      });
     }
 
     if (status) {
@@ -808,136 +812,152 @@ function cardJogo(j) {
     </div>
   `;
 }
-
 /* =========================================================
    RENDERIZAÇÃO DA HOME
 ========================================================= */
 
-function render(lista) {
+function render(lista = jogos) {
+  const el =
+    document.querySelector("#games");
+
+  if (!el) return;
+
+  const busca =
+    String(
+      document.querySelector("#q")
+        ?.value || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  let filtrados =
+    safeArray(lista);
+
+  if (busca) {
+    filtrados =
+      filtrados.filter(j => {
+        const texto = [
+          j.league?.name,
+          j.league?.country,
+          j.teams?.home?.name,
+          j.teams?.away?.name
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return texto.includes(busca);
+      });
+  }
+
+  filtrados.sort((a, b) => {
+    const prioridade =
+      prioridadeLiga(a) -
+      prioridadeLiga(b);
+
+    if (prioridade !== 0) {
+      return prioridade;
+    }
+
+    return (
+      new Date(
+        a.date ||
+        a.fixture?.date ||
+        0
+      ) -
+      new Date(
+        b.date ||
+        b.fixture?.date ||
+        0
+      )
+    );
+  });
+
   const shown =
     document.querySelector("#shown");
 
-  const total =
-    document.querySelector("#total");
-
-  const status =
-    document.querySelector("#status");
-
-  const list =
-    document.querySelector("#games");
-
   if (shown) {
     shown.textContent =
-      lista.length;
+      filtrados.length;
   }
 
-  if (total) {
-    total.textContent =
-      jogos.length;
-  }
-
-  if (status) {
-    status.textContent =
-      mode === "ao-vivo"
-        ? `${lista.length} partida(s) ao vivo.`
-        : `${lista.length} partida(s) de hoje.`;
-  }
-
-  if (!list) return;
-
-  if (!lista.length) {
-    list.innerHTML = `
+  if (!filtrados.length) {
+    el.innerHTML = `
       <div
         style="
-          padding:30px 20px;
+          padding:28px 15px;
           text-align:center;
           opacity:.7;
         "
       >
-        ${
-          mode === "ao-vivo"
-            ? "Nenhuma partida ao vivo neste momento."
-            : "Nenhuma partida encontrada."
-        }
+        <div
+          style="
+            font-size:16px;
+            font-weight:900;
+          "
+        >
+          Nenhuma partida encontrada
+        </div>
+
+        <div
+          style="
+            margin-top:6px;
+            font-size:12px;
+          "
+        >
+          Tente alterar a busca ou o filtro.
+        </div>
       </div>
     `;
 
     return;
   }
 
-  const ordenados =
-    [...lista].sort((a, b) => {
+  const grupos =
+    new Map();
 
-      const pa =
-        prioridadeLiga(a);
-
-      const pb =
-        prioridadeLiga(b);
-
-      if (pa !== pb) {
-        return pa - pb;
-      }
-
-      const ligaA =
-        String(a.league?.name || "");
-
-      const ligaB =
-        String(b.league?.name || "");
-
-      const comp =
-        ligaA.localeCompare(
-          ligaB,
-          "pt-BR"
-        );
-
-      if (comp !== 0) {
-        return comp;
-      }
-
-      return (
-        new Date(a.date || 0).getTime() -
-        new Date(b.date || 0).getTime()
-      );
-    });
-
-  const grupos = new Map();
-
-  for (const j of ordenados) {
-
-    const leagueId =
+  filtrados.forEach(j => {
+    const ligaId =
       j.league?.id || 0;
 
-    const season =
-      j.league?.season || "";
+    const nome =
+      j.league?.name ||
+      "Outras competições";
+
+    const pais =
+      j.league?.country || "";
 
     const chave =
-      `${leagueId}-${season}`;
+      `${ligaId}:${nome}:${pais}`;
 
     if (!grupos.has(chave)) {
       grupos.set(chave, {
-        league: j.league || {},
+        ligaId,
+        nome,
+        pais,
+        logo:
+          j.league?.logo || "",
         prioridade:
           prioridadeLiga(j),
         jogos: []
       });
     }
 
-    grupos
-      .get(chave)
+    grupos.get(chave)
       .jogos
       .push(j);
-  }
+  });
 
   const principais = [];
   const outras = [];
 
-  for (const grupo of grupos.values()) {
-    if (grupo.prioridade < 999) {
-      principais.push(grupo);
+  grupos.forEach(g => {
+    if (g.prioridade < 999) {
+      principais.push(g);
     } else {
-      outras.push(grupo);
+      outras.push(g);
     }
-  }
+  });
 
   principais.sort(
     (a, b) =>
@@ -945,80 +965,44 @@ function render(lista) {
       b.prioridade
   );
 
-  outras.sort((a, b) => {
+  outras.sort(
+    (a, b) =>
+      String(a.nome)
+        .localeCompare(
+          String(b.nome),
+          "pt-BR"
+        )
+  );
 
-    const paisA =
-      String(
-        a.league?.country || ""
-      );
-
-    const paisB =
-      String(
-        b.league?.country || ""
-      );
-
-    const p =
-      paisA.localeCompare(
-        paisB,
-        "pt-BR"
-      );
-
-    if (p !== 0) return p;
-
-    return String(
-      a.league?.name || ""
-    ).localeCompare(
-      String(
-        b.league?.name || ""
-      ),
-      "pt-BR"
-    );
-  });
-
-  function blocoLiga(grupo) {
-
-    const liga =
-      grupo.league?.name ||
-      "Competição";
-
-    const pais =
-      grupo.league?.country ||
-      "";
-
-    const logo =
-      grupo.league?.logo ||
-      "";
-
+  function blocoLiga(g) {
     return `
       <section
         style="
-          margin-bottom:18px;
-          border:1px solid rgba(46,229,139,.18);
-          border-radius:18px;
+          margin-bottom:13px;
           overflow:hidden;
-          background:rgba(255,255,255,.015);
+          border:1px solid rgba(255,255,255,.08);
+          border-radius:16px;
+          background:rgba(255,255,255,.025);
         "
       >
-
         <div
           style="
             display:flex;
             align-items:center;
-            gap:10px;
-            padding:14px 16px;
-            background:rgba(255,255,255,.045);
+            gap:9px;
+            padding:12px 14px;
+            background:rgba(255,255,255,.035);
           "
         >
-
           ${
-            logo
+            g.logo
               ? `
                 <img
-                  src="${e(logo)}"
+                  src="${e(g.logo)}"
                   onerror="this.style.display='none'"
                   style="
-                    width:30px;
-                    height:30px;
+                    width:27px;
+                    height:27px;
                     object-fit:contain;
                   "
                 >
@@ -1026,234 +1010,149 @@ function render(lista) {
               : ""
           }
 
-          <div style="min-width:0">
-
+          <div
+            style="
+              min-width:0;
+              flex:1;
+            "
+          >
             <div
               style="
-                font-size:11px;
-                opacity:.6;
-                font-weight:800;
-                text-transform:uppercase;
+                font-size:13px;
+                font-weight:950;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
               "
             >
-              ${e(pais)}
+              ${e(g.nome)}
             </div>
 
             <div
               style="
-                font-size:16px;
-                font-weight:900;
+                margin-top:2px;
+                font-size:10px;
+                opacity:.55;
               "
             >
-              ${e(liga)}
+              ${e(g.pais)}
             </div>
-
           </div>
 
           <div
             style="
-              margin-left:auto;
+              font-size:10px;
               opacity:.55;
-              font-size:13px;
               font-weight:800;
             "
           >
-            ${grupo.jogos.length}
+            ${g.jogos.length}
+            jogo(s)
           </div>
-
         </div>
 
         ${
-          grupo.jogos
+          g.jogos
             .map(cardJogo)
             .join("")
         }
-
       </section>
     `;
   }
 
-  let html = "";
+  el.innerHTML = `
+    ${
+      principais.length
+        ? `
+          <div
+            style="
+              margin:4px 2px 10px;
+              font-size:11px;
+              font-weight:950;
+              color:#2ee58b;
+              letter-spacing:.06em;
+            "
+          >
+            PRINCIPAIS COMPETIÇÕES
+          </div>
 
-  if (principais.length) {
+          ${
+            principais
+              .map(blocoLiga)
+              .join("")
+          }
+        `
+        : ""
+    }
 
-    html += `
-      <div
-        style="
-          margin:8px 0 12px;
-          font-size:13px;
-          font-weight:900;
-          letter-spacing:.08em;
-          text-transform:uppercase;
-          color:#2ee58b;
-        "
-      >
-        Principais competições
-      </div>
-    `;
+    ${
+      outras.length
+        ? `
+          <div
+            style="
+              margin:20px 2px 10px;
+              font-size:11px;
+              font-weight:950;
+              opacity:.6;
+              letter-spacing:.06em;
+            "
+          >
+            OUTRAS COMPETIÇÕES
+          </div>
 
-    html +=
-      principais
-        .map(blocoLiga)
-        .join("");
-  }
-
-  if (outras.length) {
-
-    html += `
-      <div
-        style="
-          margin:24px 0 12px;
-          font-size:13px;
-          font-weight:900;
-          letter-spacing:.08em;
-          text-transform:uppercase;
-          opacity:.7;
-        "
-      >
-        Outras competições
-      </div>
-    `;
-
-    html +=
-      outras
-        .map(blocoLiga)
-        .join("");
-  }
-
-  list.innerHTML = html;
+          ${
+            outras
+              .map(blocoLiga)
+              .join("")
+          }
+        `
+        : ""
+    }
+  `;
 }
 
 /* =========================================================
-   ESTATÍSTICAS DA PARTIDA
+   BUSCA DA HOME
 ========================================================= */
 
-function pegarEstatistica(lista, tipo) {
-  if (!Array.isArray(lista)) {
-    return null;
-  }
+function configurarBuscaHome() {
+  const q =
+    document.querySelector("#q");
 
-  const item =
-    lista.find(x =>
-      String(x?.type || "")
-        .toLowerCase() ===
-      String(tipo)
-        .toLowerCase()
-    );
+  if (!q) return;
 
-  return item?.value ?? null;
+  q.addEventListener(
+    "input",
+    () => render(jogos)
+  );
 }
 
-function normalizarEstatisticas(dados) {
-  if (!Array.isArray(dados)) {
-    return [];
-  }
-
-  return dados.map(item => {
-
-    const stats =
-      item.statistics || [];
-
-    return {
-      team_id:
-        item.team?.id,
-
-      team_name:
-        item.team?.name,
-
-      chutes_gol:
-        pegarEstatistica(
-          stats,
-          "Shots on Goal"
-        ),
-
-      chutes_fora:
-        pegarEstatistica(
-          stats,
-          "Shots off Goal"
-        ),
-
-      total_chutes:
-        pegarEstatistica(
-          stats,
-          "Total Shots"
-        ),
-
-      chutes_bloqueados:
-        pegarEstatistica(
-          stats,
-          "Blocked Shots"
-        ),
-
-      escanteios:
-        pegarEstatistica(
-          stats,
-          "Corner Kicks"
-        ),
-
-      impedimentos:
-        pegarEstatistica(
-          stats,
-          "Offsides"
-        ),
-
-      posse:
-        pegarEstatistica(
-          stats,
-          "Ball Possession"
-        ),
-
-      faltas:
-        pegarEstatistica(
-          stats,
-          "Fouls"
-        ),
-
-      cartoes_amarelos:
-        pegarEstatistica(
-          stats,
-          "Yellow Cards"
-        ),
-
-      cartoes_vermelhos:
-        pegarEstatistica(
-          stats,
-          "Red Cards"
-        ),
-
-      defesas_goleiro:
-        pegarEstatistica(
-          stats,
-          "Goalkeeper Saves"
-        ),
-
-      passes:
-        pegarEstatistica(
-          stats,
-          "Total passes"
-        ),
-
-      passes_certos:
-        pegarEstatistica(
-          stats,
-          "Passes accurate"
-        )
-    };
-  });
-}
-  /* =========================================================
-   CARREGAMENTO COMPLETO DA PARTIDA
+/* =========================================================
+   FETCH
 ========================================================= */
 
 async function fetchJson(url) {
-  const r = await fetch(url);
-  const d = await r.json();
+  const r = await fetch(
+    url,
+    {
+      cache: "no-store"
+    }
+  );
 
-  if (!r.ok || d?.ok === false) {
+  if (!r.ok) {
     throw new Error(
-      d?.erro ||
-      d?.error ||
-      "Erro ao carregar dados"
+      `HTTP ${r.status} em ${url}`
+    );
+  }
+
+  const d =
+    await r.json();
+
+  if (d?.ok === false) {
+    throw new Error(
+      d.error ||
+      d.erro ||
+      "Erro retornado pela API"
     );
   }
 
@@ -1264,80 +1163,169 @@ async function fetchOpcional(url) {
   try {
     return await fetchJson(url);
   } catch (err) {
-    console.warn("Dado opcional indisponível:", url, err);
+    console.warn(
+      "Recurso opcional indisponível:",
+      url,
+      err?.message
+    );
+
     return null;
   }
 }
 
-function voltarParaHome() {
-  const url = new URL(window.location.href);
+/* =========================================================
+   NORMALIZAÇÃO DAS ESTATÍSTICAS DA PARTIDA
+========================================================= */
 
-  url.searchParams.delete("jogo");
+function normalizarEstatisticas(
+  dados
+) {
+  const lista =
+    safeArray(dados);
+
+  return lista.map(item => {
+    const time =
+      item.team || {};
+
+    const stats =
+      safeArray(
+        item.statistics ||
+        item.stats
+      );
+
+    const mapa = {};
+
+    stats.forEach(s => {
+      const chave =
+        String(
+          s.type ||
+          s.name ||
+          ""
+        ).trim();
+
+      if (!chave) return;
+
+      mapa[chave] =
+        s.value;
+    });
+
+    return {
+      team: time,
+      statistics: stats,
+      mapa
+    };
+  });
+}
+
+/* =========================================================
+   VOLTAR PARA HOME
+========================================================= */
+
+function voltarParaHome() {
+  const url =
+    new URL(
+      window.location.href
+    );
+
+  url.searchParams.delete(
+    "jogo"
+  );
 
   window.history.replaceState(
     {},
     "",
-    url.pathname + url.search
+    url.pathname +
+    url.search
   );
 
   partidaAtual = null;
   historicoAtual = null;
-  jogadoresAtuais = null;
+  jogadoresAtuais = [];
+  abaAtual = "resumo";
 
   window.location.reload();
 }
-async function abrirJogo(id) {
-    id = Number(id);
 
-  if (id) {
-    const url = new URL(window.location.href);
-    url.searchParams.set("jogo", id);
-    window.history.replaceState(
-      { jogo: id },
-      "",
-      url.toString()
+/* =========================================================
+   ABRIR PARTIDA
+========================================================= */
+
+async function abrirJogo(id) {
+  id = Number(id);
+
+  if (!id) return;
+
+  const url =
+    new URL(
+      window.location.href
     );
-  }
-  document.body.innerHTML = `
+
+  url.searchParams.set(
+    "jogo",
+    String(id)
+  );
+
+  window.history.replaceState(
+    {},
+    "",
+    url.pathname +
+    url.search
+  );
+
+  const containerPartida =
+  document.getElementById("games") ||
+  document.getElementById("list") ||
+  document.getElementById("app");
+
+if (!containerPartida) return;
+
+containerPartida.innerHTML = `
     <main
       style="
-        max-width:900px;
+        width:min(100% - 20px,900px);
         margin:auto;
-        padding:16px;
+        padding:18px 0 40px;
       "
     >
       <button
-        onclick="location.reload()"
+        onclick="voltarParaHome()"
         style="
           border:0;
+          padding:10px 14px;
           border-radius:10px;
-          padding:11px 15px;
-          background:rgba(255,255,255,.08);
+          background:rgba(255,255,255,.07);
           color:#fff;
-          font-weight:800;
+          font-weight:900;
+          margin-bottom:14px;
         "
       >
         ← Voltar
       </button>
 
       ${painel(`
-        <div style="text-align:center;padding:28px 10px">
+        <div
+          style="
+            text-align:center;
+            padding:24px 10px;
+          "
+        >
           <div
             style="
-              font-size:22px;
-              font-weight:900;
+              font-size:17px;
+              font-weight:950;
             "
           >
-            Carregando análise...
+            Carregando partida...
           </div>
 
           <div
             style="
-              margin-top:8px;
-              opacity:.65;
+              margin-top:7px;
+              opacity:.6;
+              font-size:12px;
             "
           >
-            Buscando partida, histórico, jogadores e estatísticas.
+            Estatísticas, histórico, H2H e jogadores
           </div>
         </div>
       `)}
@@ -1354,7 +1342,6 @@ async function abrirJogo(id) {
       lineupsData,
       oddsData
     ] = await Promise.all([
-
       fetchJson(
         `${API}/fixture?id=${encodeURIComponent(id)}`
       ),
@@ -1385,36 +1372,38 @@ async function abrirJogo(id) {
     ]);
 
     const fixture =
-      fixtureData.dados?.[0] ||
-      fixtureData.fixture ||
-      fixtureData.response?.[0] ||
-      fixtureData.jogo ||
-      fixtureData.dados;
-
-    const homeIdH2H =
-  fixture?.teams?.home?.id ||
-  fixture?.home?.id ||
-  fixture?.casa?.id ||
-  null;
-
-const awayIdH2H =
-  fixture?.teams?.away?.id ||
-  fixture?.away?.id ||
-  fixture?.fora?.id ||
-  null;
-
-const h2hData =
-  homeIdH2H && awayIdH2H
-    ? await fetchOpcional(
-        `${API}/h2h?home=${encodeURIComponent(homeIdH2H)}&away=${encodeURIComponent(awayIdH2H)}&last=10`
-      )
-    : null;
+      fixtureData?.dados?.[0] ||
+      fixtureData?.fixture ||
+      fixtureData?.response?.[0] ||
+      fixtureData?.jogo ||
+      fixtureData?.dados ||
+      fixtureData;
 
     if (!fixture) {
       throw new Error(
         "Partida não encontrada."
       );
     }
+
+    const homeIdH2H =
+      fixture?.teams?.home?.id ||
+      fixture?.home?.id ||
+      fixture?.casa?.id ||
+      null;
+
+    const awayIdH2H =
+      fixture?.teams?.away?.id ||
+      fixture?.away?.id ||
+      fixture?.fora?.id ||
+      null;
+
+    const h2hData =
+      homeIdH2H &&
+      awayIdH2H
+        ? await fetchOpcional(
+            `${API}/h2h?home=${encodeURIComponent(homeIdH2H)}&away=${encodeURIComponent(awayIdH2H)}&last=10`
+          )
+        : null;
 
     const estatisticasBrutas =
       statsData?.estatisticas ||
@@ -1453,18 +1442,18 @@ const h2hData =
       );
 
     partidaAtual = {
-      h2h:
-  h2hData?.jogos ||
-  h2hData?.partidas ||
-  h2hData?.response ||
-  [],
-      
-  id:
       id:
         fixture.fixture?.id ||
+        fixture.id ||
         id,
 
       fixture,
+
+      h2h:
+        h2hData?.jogos ||
+        h2hData?.partidas ||
+        h2hData?.response ||
+        [],
 
       competition:
         fixture.league?.name,
@@ -1530,22 +1519,22 @@ const h2hData =
       odds
     };
 
-    c
-
-historicoAtual =
-  historicoData || null;
+    historicoAtual =
+      historicoData ||
+      null;
 
     jogadoresAtuais =
       jogadores;
 
-    abaAtual = "resumo";
+    abaAtual =
+      "resumo";
 
     renderPaginaPartida();
 
   } catch (err) {
     console.error(err);
 
-    document.body.innerHTML = `
+    containerPartida.innerHTML = `
       <main
         style="
           max-width:850px;
@@ -1554,20 +1543,40 @@ historicoAtual =
         "
       >
         <button
-          onclick="location.reload()"
+          onclick="voltarParaHome()"
           style="
             padding:11px 15px;
             margin-bottom:15px;
+            border:0;
+            border-radius:10px;
+            background:rgba(255,255,255,.08);
+            color:#fff;
+            font-weight:900;
           "
         >
           ← Voltar
         </button>
 
         ${painel(`
-          <div style="text-align:center;padding:20px">
-            <h2>Não foi possível carregar a partida</h2>
-            <p style="opacity:.7">
-              ${e(err.message)}
+          <div
+            style="
+              text-align:center;
+              padding:20px;
+            "
+          >
+            <h2>
+              Não foi possível carregar a partida
+            </h2>
+
+            <p
+              style="
+                opacity:.7;
+              "
+            >
+              ${e(
+                err?.message ||
+                "Erro desconhecido"
+              )}
             </p>
           </div>
         `)}
@@ -1587,13 +1596,16 @@ function statusPartidaAtual() {
     partidaAtual.status || {};
 
   const short =
-    String(s.short || "")
-      .toUpperCase();
+    String(
+      s.short || ""
+    ).toUpperCase();
+
+  const elapsed =
+    s.elapsed;
 
   if (
     [
       "1H",
-      "HT",
       "2H",
       "ET",
       "BT",
@@ -1601,188 +1613,232 @@ function statusPartidaAtual() {
       "LIVE"
     ].includes(short)
   ) {
-    if (short === "HT") {
-      return "INTERVALO";
-    }
-
-    return s.elapsed != null
-      ? `AO VIVO • ${s.elapsed}'`
+    return elapsed != null
+      ? `${elapsed}' • AO VIVO`
       : "AO VIVO";
   }
 
+  if (short === "HT") {
+    return "INTERVALO";
+  }
+
   if (
-    ["FT", "AET", "PEN"]
-      .includes(short)
+    [
+      "FT",
+      "AET",
+      "PEN"
+    ].includes(short)
   ) {
     return "ENCERRADO";
   }
 
-  return horaCurta(
-    partidaAtual.date
-  );
+  if (short === "PST") {
+    return "ADIADO";
+  }
+
+  if (short === "CANC") {
+    return "CANCELADO";
+  }
+
+  return "PRÉ-JOGO";
 }
 
 function cabecalhoPartida() {
-  const p =
-    partidaAtual;
+  if (!partidaAtual) return "";
 
-  if (!p) return "";
-
-  const iniciado =
+  const aoVivo =
     jogoEstaAoVivo(
-      p.fixture
-    ) ||
-    ["FT", "AET", "PEN"].includes(
+      partidaAtual.fixture
+    );
+
+  const terminou =
+    [
+      "FT",
+      "AET",
+      "PEN"
+    ].includes(
       String(
-        p.status?.short || ""
+        partidaAtual.status?.short ||
+        ""
       ).toUpperCase()
     );
 
-  return `
-    ${painel(`
+  const placar =
+    aoVivo || terminou
+      ? `
+        ${n(
+          partidaAtual.home.goals
+        )}
+        <span style="opacity:.45">
+          ×
+        </span>
+        ${n(
+          partidaAtual.away.goals
+        )}
+      `
+      : horaCurta(
+          partidaAtual.date
+        );
+
+  return painel(`
+    <div
+      style="
+        text-align:center;
+      "
+    >
+
       <div
         style="
-          font-size:11px;
-          font-weight:800;
-          opacity:.65;
-          text-align:center;
-          margin-bottom:15px;
+          font-size:10px;
+          font-weight:900;
+          opacity:.6;
+          text-transform:uppercase;
+          letter-spacing:.05em;
         "
       >
-        ${e(p.competition || "Competição")}
-        ${
-          p.round
-            ? ` • ${e(p.round)}`
-            : ""
-        }
+        ${e(
+          partidaAtual.competition ||
+          "Competição"
+        )}
+      </div>
+
+      <div
+        style="
+          margin-top:5px;
+          font-size:10px;
+          opacity:.45;
+        "
+      >
+        ${e(
+          partidaAtual.round || ""
+        )}
       </div>
 
       <div
         style="
           display:grid;
-          grid-template-columns:minmax(0,1fr) 75px minmax(0,1fr);
-          align-items:center;
+          grid-template-columns:1fr 90px 1fr;
           gap:10px;
+          align-items:center;
+          margin-top:20px;
         "
       >
 
-        <div
-          onclick="abrirTime(${Number(p.home.id)})"
-          style="
-            text-align:center;
-            cursor:pointer;
-          "
-        >
-          <img
-            src="${e(p.home.logo)}"
-            onerror="this.style.display='none'"
-            style="
-              width:64px;
-              height:64px;
-              object-fit:contain;
-            "
-          >
+        <div>
+          ${
+            partidaAtual.home.logo
+              ? `
+                <img
+                  src="${e(
+                    partidaAtual.home.logo
+                  )}"
+                  onerror="this.style.display='none'"
+                  style="
+                    width:60px;
+                    height:60px;
+                    object-fit:contain;
+                  "
+                >
+              `
+              : ""
+          }
 
           <div
             style="
               margin-top:8px;
-              font-weight:900;
-              font-size:15px;
-            "
-          >
-            ${e(p.home.name)}
-          </div>
-
-          <div
-            style="
-              margin-top:4px;
-              font-size:11px;
-              color:#2ee58b;
-              font-weight:800;
-            "
-          >
-            Ver análise
-          </div>
-        </div>
-
-        <div style="text-align:center">
-
-          <div
-            style="
-              font-size:${
-                iniciado
-                  ? "28px"
-                  : "20px"
-              };
+              font-size:14px;
               font-weight:950;
             "
           >
-            ${
-              iniciado
-                ? `${p.home.goals ?? 0} - ${p.away.goals ?? 0}`
-                : e(horaCurta(p.date))
-            }
+            ${e(
+              partidaAtual.home.name
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div
+            style="
+              font-size:25px;
+              font-weight:950;
+            "
+          >
+            ${placar}
           </div>
 
           <div
             style="
               margin-top:6px;
-              font-size:11px;
-              font-weight:900;
+              font-size:10px;
+              font-weight:950;
               color:${
-                jogoEstaAoVivo(p.fixture)
+                aoVivo
                   ? "#2ee58b"
                   : "rgba(255,255,255,.55)"
               };
             "
           >
-            ${e(statusPartidaAtual())}
+            ${e(
+              statusPartidaAtual()
+            )}
           </div>
-
         </div>
 
-        <div
-          onclick="abrirTime(${Number(p.away.id)})"
-          style="
-            text-align:center;
-            cursor:pointer;
-          "
-        >
-          <img
-            src="${e(p.away.logo)}"
-            onerror="this.style.display='none'"
-            style="
-              width:64px;
-              height:64px;
-              object-fit:contain;
-            "
-          >
+        <div>
+          ${
+            partidaAtual.away.logo
+              ? `
+                <img
+                  src="${e(
+                    partidaAtual.away.logo
+                  )}"
+                  onerror="this.style.display='none'"
+                  style="
+                    width:60px;
+                    height:60px;
+                    object-fit:contain;
+                  "
+                >
+              `
+              : ""
+          }
 
           <div
             style="
               margin-top:8px;
-              font-weight:900;
-              font-size:15px;
+              font-size:14px;
+              font-weight:950;
             "
           >
-            ${e(p.away.name)}
-          </div>
-
-          <div
-            style="
-              margin-top:4px;
-              font-size:11px;
-              color:#2ee58b;
-              font-weight:800;
-            "
-          >
-            Ver análise
+            ${e(
+              partidaAtual.away.name
+            )}
           </div>
         </div>
 
       </div>
-    `)}
-  `;
+
+      <div
+        style="
+          margin-top:16px;
+          font-size:11px;
+          opacity:.55;
+        "
+      >
+        ${e(
+          dataCurta(
+            partidaAtual.date
+          )
+        )}
+        •
+        ${e(
+          partidaAtual.country ||
+          ""
+        )}
+      </div>
+
+    </div>
+  `);
 }
 
 /* =========================================================
@@ -1814,14 +1870,16 @@ function barraAbasPartida() {
       "
     >
       ${
-        ABAS_PARTIDA.map(
-          ([id, nome]) =>
-            botao(
-              nome,
-              `mudarAbaPartida('${id}')`,
-              abaAtual === id
-            )
-        ).join("")
+        ABAS_PARTIDA
+          .map(
+            ([id, nome]) =>
+              botao(
+                nome,
+                `mudarAbaPartida('${id}')`,
+                abaAtual === id
+              )
+          )
+          .join("")
       }
     </div>
   `;
@@ -1833,8 +1891,7 @@ function mudarAbaPartida(aba) {
 }
 
 /* =========================================================
-   SCORE E MATCHUP
-   O score NÃO representa probabilidade.
+   SCORE PROFIANALISES
 ========================================================= */
 
 function calcularScoreBase() {
@@ -1858,20 +1915,34 @@ function calcularScoreBase() {
       h.fora?.ultimas10?.partidas
     );
 
-  if (!casa.length || !fora.length) {
+  if (
+    !casa.length ||
+    !fora.length
+  ) {
     return {
-      score: null,
-      matchup: "-"
-    };
-  }
+  score: null,
+  matchup: "-"
+};
 
   const saldoCasa =
-    soma(casa, "golsFavor") -
-    soma(casa, "golsContra");
+    soma(
+      casa,
+      "golsFavor"
+    ) -
+    soma(
+      casa,
+      "golsContra"
+    );
 
   const saldoFora =
-    soma(fora, "golsFavor") -
-    soma(fora, "golsContra");
+    soma(
+      fora,
+      "golsFavor"
+    ) -
+    soma(
+      fora,
+      "golsContra"
+    );
 
   const amostra =
     Math.min(
@@ -1886,7 +1957,10 @@ function calcularScoreBase() {
       -18,
       Math.min(
         18,
-        (saldoCasa - saldoFora) * 2
+        (
+          saldoCasa -
+          saldoFora
+        ) * 2
       )
     );
 
@@ -1907,10 +1981,15 @@ function calcularScoreBase() {
 
   let matchup = "C";
 
-  if (score >= 85) matchup = "A";
-  else if (score >= 70) matchup = "B";
-  else if (score >= 55) matchup = "C";
-  else matchup = "D";
+  if (score >= 85) {
+    matchup = "A";
+  } else if (score >= 70) {
+    matchup = "B";
+  } else if (score >= 55) {
+    matchup = "C";
+  } else {
+    matchup = "D";
+  }
 
   return {
     score,
@@ -1924,8 +2003,8 @@ function cardScore() {
 
   return painel(`
     ${tituloSecao(
-      "Score Profianalises / Matchup",
-      "Índice interno de análise — não representa probabilidade de acerto."
+      "Score Profianalises",
+      "Indicador estatístico do matchup — não representa probabilidade."
     )}
 
     <div
@@ -1938,17 +2017,17 @@ function cardScore() {
 
       <div
         style="
+          padding:17px;
           border-radius:14px;
-          padding:18px 10px;
-          text-align:center;
           background:rgba(46,229,139,.07);
+          border:1px solid rgba(46,229,139,.16);
         "
       >
         <div
           style="
-            font-size:11px;
-            opacity:.65;
-            font-weight:800;
+            font-size:10px;
+            opacity:.6;
+            font-weight:900;
           "
         >
           SCORE
@@ -1956,33 +2035,43 @@ function cardScore() {
 
         <div
           style="
-            margin-top:6px;
-            font-size:30px;
+            margin-top:5px;
+            font-size:29px;
             font-weight:950;
             color:#2ee58b;
           "
         >
           ${
-            r.score == null
+            r.score === null
               ? "-"
-              : `${r.score}/100`
+              : r.score
           }
+        </div>
+
+        <div
+          style="
+            margin-top:3px;
+            font-size:10px;
+            opacity:.55;
+          "
+        >
+          escala 0–100
         </div>
       </div>
 
       <div
         style="
+          padding:17px;
           border-radius:14px;
-          padding:18px 10px;
-          text-align:center;
-          background:rgba(255,255,255,.04);
+          background:rgba(255,255,255,.035);
+          border:1px solid rgba(255,255,255,.08);
         "
       >
         <div
           style="
-            font-size:11px;
-            opacity:.65;
-            font-weight:800;
+            font-size:10px;
+            opacity:.6;
+            font-weight:900;
           "
         >
           MATCHUP
@@ -1990,212 +2079,33 @@ function cardScore() {
 
         <div
           style="
-            margin-top:6px;
-            font-size:30px;
+            margin-top:5px;
+            font-size:29px;
             font-weight:950;
           "
         >
           ${e(r.matchup)}
         </div>
-      </div>
 
-    </div>
-
-    <button
-      onclick="mostrarExplicacaoScore()"
-      style="
-        width:100%;
-        margin-top:12px;
-        border:1px solid rgba(46,229,139,.25);
-        background:transparent;
-        color:#2ee58b;
-        padding:11px;
-        border-radius:11px;
-        font-weight:900;
-      "
-    >
-      Por que este score?
-    </button>
-
-    <div
-      id="explicacao-score"
-      style="
-        display:none;
-        margin-top:12px;
-        padding:12px;
-        border-radius:12px;
-        background:rgba(255,255,255,.035);
-        font-size:13px;
-        line-height:1.6;
-      "
-    >
-      O Score Profianalises será formado por tendência recente,
-      Casa/Fora, campeonato, estabilidade da amostra,
-      adversário, projeção versus linha e, quando disponível,
-      preço/odd do mercado.
-
-      <br><br>
-
-      Ele é um índice comparativo interno e não deve ser
-      interpretado como chance garantida de acerto.
-    </div>
-  `);
-}
-
-function mostrarExplicacaoScore() {
-  const el =
-    document.querySelector(
-      "#explicacao-score"
-    );
-
-  if (!el) return;
-
-  el.style.display =
-    el.style.display === "none"
-      ? "block"
-      : "none";
-}
-
-/* =========================================================
-   RESUMO DAS ÚLTIMAS PARTIDAS
-========================================================= */
-
-function resultadoPartidaHistorica(p) {
-  const gf =
-    n(p.golsFavor);
-
-  const gc =
-    n(p.golsContra);
-
-  if (gf > gc) return "V";
-  if (gf < gc) return "D";
-
-  return "E";
-}
-
-function corResultado(r) {
-  if (r === "V") return "#2ee58b";
-  if (r === "D") return "#ff6470";
-
-  return "#e6c84f";
-}
-
-function miniForma(partidas) {
-  const lista =
-    safeArray(partidas)
-      .slice(0, 5);
-
-  if (!lista.length) {
-    return `
-      <span style="opacity:.6">
-        Sem dados
-      </span>
-    `;
-  }
-
-  return `
-    <div
-      style="
-        display:flex;
-        gap:5px;
-        flex-wrap:wrap;
-      "
-    >
-      ${
-        lista.map(p => {
-          const r =
-            resultadoPartidaHistorica(p);
-
-          return `
-            <span
-              style="
-                width:26px;
-                height:26px;
-                border-radius:7px;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                background:${corResultado(r)};
-                color:#07120d;
-                font-size:12px;
-                font-weight:950;
-              "
-            >
-              ${r}
-            </span>
-          `;
-        }).join("")
-      }
-    </div>
-  `;
-}
-
-function resumoFormaTimes() {
-  const casa =
-    historicoAtual?.casa;
-
-  const fora =
-    historicoAtual?.fora;
-
-  return painel(`
-    ${tituloSecao(
-      "Forma recente",
-      "Últimos resultados disponíveis"
-    )}
-
-    <div
-      style="
-        display:flex;
-        flex-direction:column;
-        gap:16px;
-      "
-    >
-
-      <div>
         <div
           style="
-            font-weight:900;
-            margin-bottom:8px;
+            margin-top:3px;
+            font-size:10px;
+            opacity:.55;
           "
         >
-          ${e(
-            partidaAtual?.home?.name ||
-            "Mandante"
-          )}
+          leitura estatística
         </div>
-
-        ${miniForma(
-          casa?.ultimas5?.partidas
-        )}
-      </div>
-
-      <div>
-        <div
-          style="
-            font-weight:900;
-            margin-bottom:8px;
-          "
-        >
-          ${e(
-            partidaAtual?.away?.name ||
-            "Visitante"
-          )}
-        </div>
-
-        ${miniForma(
-          fora?.ultimas5?.partidas
-        )}
       </div>
 
     </div>
   `);
 }
-
 /* =========================================================
    OPORTUNIDADES PROFIANALISES
 ========================================================= */
 
-function cardOportunidade(op) {
+function cardOportunidade(op = {}) {
   return `
     <div
       style="
@@ -2206,7 +2116,6 @@ function cardOportunidade(op) {
         margin-top:10px;
       "
     >
-
       <div
         style="
           color:#2ee58b;
@@ -2225,7 +2134,7 @@ function cardOportunidade(op) {
           font-weight:950;
         "
       >
-        ${e(op.titulo)}
+        ${e(op.titulo || op.mercado || "Mercado")}
       </div>
 
       <div
@@ -2239,49 +2148,37 @@ function cardOportunidade(op) {
       >
         <div>
           Odd atual:
-          <strong>
-            ${formatarOdd(op.odd)}
-          </strong>
+          <strong>${formatarOdd(op.odd)}</strong>
         </div>
 
         <div>
           L10:
-          <strong>
-            ${e(op.l10 || "-")}
-          </strong>
+          <strong>${e(op.l10 || "-")}</strong>
         </div>
 
         <div>
           Casa/Fora:
-          <strong>
-            ${e(op.casaFora || "-")}
-          </strong>
+          <strong>${e(op.casaFora || "-")}</strong>
         </div>
 
         <div>
           Média:
-          <strong>
-            ${e(op.media || "-")}
-          </strong>
+          <strong>${e(op.media || "-")}</strong>
         </div>
 
         <div>
           Projeção:
-          <strong>
-            ${e(op.projecao || "-")}
-          </strong>
+          <strong>${e(op.projecao || "-")}</strong>
         </div>
 
         <div>
           Score:
-          <strong>
-            ${e(op.score || "-")}
-          </strong>
+          <strong>${e(op.score || "-")}</strong>
         </div>
       </div>
 
       ${
-        op.motivos?.length
+        safeArray(op.motivos).length
           ? `
             <div
               style="
@@ -2293,39 +2190,35 @@ function cardOportunidade(op) {
               "
             >
               ${
-                op.motivos
-                  .map(
-                    m =>
-                      `✓ ${e(m)}`
-                  )
+                safeArray(op.motivos)
+                  .map(m => `✓ ${e(m)}`)
                   .join("<br>")
               }
             </div>
           `
           : ""
       }
-
     </div>
   `;
 }
 
 function obterOportunidades() {
-  /*
-    Esta função já deixa o frontend pronto para receber
-    oportunidades calculadas pelo backend.
-
-    NÃO criamos odds ou probabilidades fictícias.
-  */
-
   const fontes = [
     partidaAtual?.oportunidades,
     partidaAtual?.analise?.oportunidades,
     partidaAtual?.odds?.oportunidades
   ];
 
-  for (const f of fontes) {
-    if (Array.isArray(f)) {
-      return f;
+  for (const fonte of fontes) {
+    if (Array.isArray(fonte)) {
+      return fonte.filter(op => {
+        const odd = Number(op?.odd);
+
+        return (
+          !Number.isFinite(odd) ||
+          odd >= CONFIG.oddMinima
+        );
+      });
     }
   }
 
@@ -2340,7 +2233,7 @@ function renderOportunidades() {
     return painel(`
       ${tituloSecao(
         "Oportunidades Profianalises",
-        "Somente mercados que passarem pelos filtros aparecerão aqui."
+        "Somente mercados que passarem pelos filtros aparecem aqui."
       )}
 
       <div
@@ -2361,13 +2254,13 @@ function renderOportunidades() {
             font-size:12px;
             opacity:.65;
             line-height:1.5;
-              "
-            >
-              O sistema não força uma indicação quando os
-              critérios estatísticos e de odd não são atingidos.
-            </div>
-          </div>
-        `);
+          "
+        >
+          O sistema não força uma indicação quando os critérios
+          estatísticos e de odd não são atingidos.
+        </div>
+      </div>
+    `);
   }
 
   return painel(`
@@ -2394,9 +2287,9 @@ function obterMultiplas() {
     partidaAtual?.analise?.multiplas
   ];
 
-  for (const f of fontes) {
-    if (Array.isArray(f)) {
-      return f;
+  for (const fonte of fontes) {
+    if (Array.isArray(fonte)) {
+      return fonte;
     }
   }
 
@@ -2410,7 +2303,7 @@ function renderMultiplas() {
   return painel(`
     ${tituloSecao(
       "Múltiplas Profianalises",
-      "Combinações formadas apenas por seleções previamente qualificadas."
+      "Combinações apenas com seleções previamente qualificadas."
     )}
 
     <div
@@ -2423,21 +2316,20 @@ function renderMultiplas() {
     >
       ${
         CONFIG.alvosMultiplas
-          .map(
-            x =>
-              `<span
-                style="
-                  padding:8px 11px;
-                  border-radius:9px;
-                  background:rgba(255,255,255,.05);
-                  font-size:12px;
-                  font-weight:900;
-                  white-space:nowrap;
-                "
-              >
-                Odd ~${String(x).replace(".", ",")}
-              </span>`
-          )
+          .map(x => `
+            <span
+              style="
+                padding:8px 11px;
+                border-radius:9px;
+                background:rgba(255,255,255,.05);
+                font-size:12px;
+                font-weight:900;
+                white-space:nowrap;
+              "
+            >
+              Odd ~${String(x).replace(".", ",")}
+            </span>
+          `)
           .join("")
       }
     </div>
@@ -2460,7 +2352,7 @@ function renderMultiplas() {
                     color:#2ee58b;
                   "
                 >
-                  Alvo ~${e(m.alvo)}
+                  Alvo ~${e(m.alvo || "-")}
                   • Odd real ${formatarOdd(m.odd)}
                 </div>
 
@@ -2475,7 +2367,7 @@ function renderMultiplas() {
                     safeArray(m.selecoes)
                       .map(
                         s =>
-                          `• ${e(s.titulo)} ${
+                          `• ${e(s.titulo || s.mercado || "-")} ${
                             s.odd
                               ? `@${formatarOdd(s.odd)}`
                               : ""
@@ -2503,12 +2395,12 @@ function renderMultiplas() {
             <div
               style="
                 margin-top:6px;
-                font-size:12px;
-                opacity:.65;
+                font-size:11px;
+                opacity:.55;
               "
             >
-              Não será criada uma múltipla apenas para
-              alcançar artificialmente uma odd-alvo.
+              Não criamos odds ou seleções fictícias para atingir
+              artificialmente os alvos.
             </div>
           </div>
         `
@@ -2517,17 +2409,208 @@ function renderMultiplas() {
 }
 
 /* =========================================================
-   VISÃO GERAL
+   RESUMO DE FORMA DAS EQUIPES
+========================================================= */
+
+function partidasHistoricoLado(lado, quantidade = 10) {
+  const bloco =
+    lado === "casa"
+      ? historicoAtual?.casa
+      : historicoAtual?.fora;
+
+  if (!bloco) return [];
+
+  const chave =
+    Number(quantidade) === 5
+      ? "ultimas5"
+      : "ultimas10";
+
+  return safeArray(
+    bloco?.[chave]?.partidas
+  ).slice(
+    0,
+    Number(quantidade) === 5
+      ? 5
+      : 10
+  );
+}
+
+function resumoFormaTime(lado, nome) {
+  const partidas =
+    partidasHistoricoLado(lado, 10);
+
+  if (!partidas.length) {
+    return `
+      <div
+        style="
+          padding:13px;
+          border-radius:12px;
+          background:rgba(255,255,255,.035);
+        "
+      >
+        <strong>${e(nome)}</strong>
+
+        <div
+          style="
+            margin-top:5px;
+            font-size:11px;
+            opacity:.55;
+          "
+        >
+          Histórico indisponível.
+        </div>
+      </div>
+    `;
+  }
+
+  const gf = soma(partidas, "golsFavor");
+  const gc = soma(partidas, "golsContra");
+
+  let vitorias = 0;
+  let empates = 0;
+  let derrotas = 0;
+
+  partidas.forEach(p => {
+    const favor = n(p.golsFavor);
+    const contra = n(p.golsContra);
+
+    if (favor > contra) {
+      vitorias++;
+    } else if (favor === contra) {
+      empates++;
+    } else {
+      derrotas++;
+    }
+  });
+
+  return `
+    <div
+      style="
+        padding:13px;
+        border-radius:12px;
+        background:rgba(255,255,255,.035);
+        border:1px solid rgba(255,255,255,.06);
+      "
+    >
+      <div
+        style="
+          font-weight:950;
+          white-space:nowrap;
+          overflow:hidden;
+          text-overflow:ellipsis;
+        "
+      >
+        ${e(nome)}
+      </div>
+
+      <div
+        style="
+          margin-top:9px;
+          display:grid;
+          grid-template-columns:repeat(3,1fr);
+          gap:5px;
+          text-align:center;
+        "
+      >
+        <div>
+          <strong style="color:#2ee58b">${vitorias}</strong>
+          <div style="font-size:9px;opacity:.5">VIT</div>
+        </div>
+
+        <div>
+          <strong>${empates}</strong>
+          <div style="font-size:9px;opacity:.5">EMP</div>
+        </div>
+
+        <div>
+          <strong>${derrotas}</strong>
+          <div style="font-size:9px;opacity:.5">DER</div>
+        </div>
+      </div>
+
+      <div
+        style="
+          margin-top:10px;
+          padding-top:9px;
+          border-top:1px solid rgba(255,255,255,.06);
+          font-size:11px;
+          line-height:1.7;
+        "
+      >
+        Gols marcados:
+        <strong>${gf}</strong>
+        <br>
+
+        Média:
+        <strong>${media(gf, partidas.length)}</strong>
+        <br>
+
+        Gols sofridos:
+        <strong>${gc}</strong>
+        <br>
+
+        Média sofrida:
+        <strong>${media(gc, partidas.length)}</strong>
+      </div>
+    </div>
+  `;
+}
+
+function resumoFormaTimes() {
+  if (!historicoAtual) {
+    return painel(`
+      ${tituloSecao(
+        "Forma recente",
+        "Últimos jogos das equipes"
+      )}
+
+      <div
+        style="
+          padding:16px;
+          text-align:center;
+          opacity:.6;
+        "
+      >
+        Histórico ainda não disponível para esta partida.
+      </div>
+    `);
+  }
+
+  return painel(`
+    ${tituloSecao(
+      "Forma recente",
+      "Resumo dos últimos 10 jogos disponíveis"
+    )}
+
+    <div
+      style="
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:9px;
+      "
+    >
+      ${resumoFormaTime(
+        "casa",
+        partidaAtual?.home?.name
+      )}
+
+      ${resumoFormaTime(
+        "fora",
+        partidaAtual?.away?.name
+      )}
+    </div>
+  `);
+}
+
+/* =========================================================
+   RESUMO DA PARTIDA
 ========================================================= */
 
 function renderResumoPartida() {
   return `
     ${cardScore()}
-
     ${renderOportunidades()}
-
     ${resumoFormaTimes()}
-
     ${renderMultiplas()}
 
     ${painel(`
@@ -2544,7 +2627,9 @@ function renderResumoPartida() {
         "
       >
         <button
-          onclick="abrirTime(${Number(partidaAtual.home.id)})"
+          onclick="abrirTime(${Number(
+            partidaAtual?.home?.id || 0
+          )})"
           style="
             padding:14px 8px;
             border-radius:12px;
@@ -2554,11 +2639,13 @@ function renderResumoPartida() {
             font-weight:900;
           "
         >
-          ${e(partidaAtual.home.name)}
+          ${e(partidaAtual?.home?.name || "Casa")}
         </button>
 
         <button
-          onclick="abrirTime(${Number(partidaAtual.away.id)})"
+          onclick="abrirTime(${Number(
+            partidaAtual?.away?.id || 0
+          )})"
           style="
             padding:14px 8px;
             border-radius:12px;
@@ -2568,7 +2655,7 @@ function renderResumoPartida() {
             font-weight:900;
           "
         >
-          ${e(partidaAtual.away.name)}
+          ${e(partidaAtual?.away?.name || "Fora")}
         </button>
       </div>
     `)}
@@ -2576,376 +2663,16 @@ function renderResumoPartida() {
 }
 
 /* =========================================================
-   CONTEÚDO DAS ABAS
+   H2H
 ========================================================= */
-
-function conteudoAbaPartida() {
-  switch (abaAtual) {
-
-    case "oportunidades":
-      return `
-        ${renderOportunidades()}
-        ${renderMultiplas()}
-      `;
-
-    case "h2h":
-      return renderH2H();
-
-    case "analise":
-      return renderAnaliseAutomatica();
-
-    case "escalacoes":
-      return renderEscalacoes();
-
-    case "jogadores":
-      return renderJogadoresPartida();
-
-    case "estatisticas":
-      return renderEstatisticasPartida();
-
-    case "eventos":
-      return renderEventosPartida();
-
-    case "odds":
-      return renderOddsPartida();
-
-    case "resumo":
-    default:
-      return renderResumoPartida();
-  }
-}
-
-/* =========================================================
-   PÁGINA PRINCIPAL DA PARTIDA
-========================================================= */
-
-function renderPaginaPartida() {
-  if (!partidaAtual) return;
-
-  document.body.innerHTML = `
-    <main
-      style="
-        width:min(100% - 20px,900px);
-        margin:auto;
-        padding:12px 0 30px;
-      "
-    >
-
-      <div
-        style="
-          display:flex;
-          align-items:center;
-          gap:10px;
-          margin-bottom:12px;
-        "
-      >
-        <button
-          onclick="voltarParaHome()"
-          style="
-            border:0;
-            width:42px;
-            height:42px;
-            border-radius:12px;
-            background:rgba(255,255,255,.07);
-            color:#fff;
-            font-size:20px;
-            cursor:pointer;
-          "
-        >
-          ←
-        </button>
-
-        <div>
-          <div
-            style="
-              font-weight:950;
-              font-size:18px;
-            "
-          >
-            Profianalises<span style="color:#2ee58b">bet</span>
-          </div>
-
-          <div
-            style="
-              font-size:10px;
-              opacity:.55;
-              font-weight:800;
-            "
-          >
-            DADOS • ANÁLISES • OPORTUNIDADES
-          </div>
-        </div>
-      </div>
-
-      ${cabecalhoPartida()}
-
-      ${barraAbasPartida()}
-
-      <div id="conteudo-partida">
-        ${conteudoAbaPartida()}
-      </div>
-
-    </main>
-  `;
-}
-  /* =========================================================
-   FILTROS DE HISTÓRICO / ANÁLISE
-========================================================= */
-
-let filtroHistorico = {
-  quantidade: 10,
-  local: "geral",
-  campeonato: "todos"
-};
 
 let filtroH2H = 5;
 
-function partidasHistoricoLado(lado, quantidade = 10) {
-  const h = historicoAtual?.[lado];
-
-  if (!h) return [];
-
-  const origem =
-    quantidade === 5
-      ? h.ultimas5?.partidas
-      : h.ultimas10?.partidas;
-
-  return safeArray(origem);
-}
-
-function idLigaHistorica(p) {
-  return (
-    p?.liga?.id ??
-    p?.league?.id ??
-    p?.leagueId ??
-    null
-  );
-}
-
-function nomeLigaHistorica(p) {
-  return (
-    p?.liga?.name ||
-    p?.league?.name ||
-    p?.campeonato ||
-    "Competição"
-  );
-}
-
-function localHistorico(p) {
-  return String(
-    p?.local ||
-    p?.venue ||
-    ""
-  ).toLowerCase();
-}
-
-function partidaEhCasa(p) {
-  const l = localHistorico(p);
-
-  return (
-    l === "casa" ||
-    l === "home"
-  );
-}
-
-function partidaEhFora(p) {
-  const l = localHistorico(p);
-
-  return (
-    l === "fora" ||
-    l === "away"
-  );
-}
-
-function filtrarPartidasHistoricas(
-  partidas,
-  local = filtroHistorico.local,
-  campeonato = filtroHistorico.campeonato
-) {
-  let lista = [...safeArray(partidas)];
-
-  if (local === "casa") {
-    lista = lista.filter(partidaEhCasa);
-  }
-
-  if (local === "fora") {
-    lista = lista.filter(partidaEhFora);
-  }
-
-  if (
-    campeonato !== "todos" &&
-    campeonato !== null &&
-    campeonato !== ""
-  ) {
-    lista = lista.filter(
-      p =>
-        String(idLigaHistorica(p)) ===
-        String(campeonato)
-    );
-  }
-
-  return lista;
-}
-
-function campeonatosDoHistorico() {
-  const todas = [
-    ...partidasHistoricoLado("casa", 10),
-    ...partidasHistoricoLado("fora", 10)
-  ];
-
-  const mapa = new Map();
-
-  todas.forEach(p => {
-    const id = idLigaHistorica(p);
-    const nome = nomeLigaHistorica(p);
-
-    if (id != null && !mapa.has(String(id))) {
-      mapa.set(String(id), {
-        id,
-        nome
-      });
-    }
-  });
-
-  return [...mapa.values()]
-    .sort((a, b) =>
-      String(a.nome).localeCompare(
-        String(b.nome),
-        "pt-BR"
-      )
-    );
-}
-
-function mudarQuantidadeHistorico(qtd) {
-  filtroHistorico.quantidade =
-    Number(qtd) === 5 ? 5 : 10;
-
-  renderPaginaPartida();
-}
-
-function mudarLocalHistorico(local) {
-  filtroHistorico.local = local;
-  renderPaginaPartida();
-}
-
-function mudarCampeonatoHistorico(valor) {
-  filtroHistorico.campeonato =
-    valor || "todos";
-
-  renderPaginaPartida();
-}
-
-function controlesHistorico() {
-  const campeonatos =
-    campeonatosDoHistorico();
-
-  return `
-    <div
-      style="
-        display:flex;
-        flex-direction:column;
-        gap:10px;
-        margin-bottom:14px;
-      "
-    >
-
-      <div
-        style="
-          display:flex;
-          gap:7px;
-          overflow-x:auto;
-        "
-      >
-        ${botao(
-          "Últimos 5",
-          "mudarQuantidadeHistorico(5)",
-          filtroHistorico.quantidade === 5
-        )}
-
-        ${botao(
-          "Últimos 10",
-          "mudarQuantidadeHistorico(10)",
-          filtroHistorico.quantidade === 10
-        )}
-      </div>
-
-      <div
-        style="
-          display:flex;
-          gap:7px;
-          overflow-x:auto;
-        "
-      >
-        ${botao(
-          "Geral",
-          "mudarLocalHistorico('geral')",
-          filtroHistorico.local === "geral"
-        )}
-
-        ${botao(
-          "Casa",
-          "mudarLocalHistorico('casa')",
-          filtroHistorico.local === "casa"
-        )}
-
-        ${botao(
-          "Fora",
-          "mudarLocalHistorico('fora')",
-          filtroHistorico.local === "fora"
-        )}
-      </div>
-
-      <select
-        onchange="mudarCampeonatoHistorico(this.value)"
-        style="
-          width:100%;
-          border:1px solid rgba(255,255,255,.12);
-          border-radius:11px;
-          background:#101820;
-          color:#fff;
-          padding:11px;
-          font-weight:800;
-        "
-      >
-        <option
-          value="todos"
-          ${
-            filtroHistorico.campeonato === "todos"
-              ? "selected"
-              : ""
-          }
-        >
-          Todos os campeonatos
-        </option>
-
-        ${
-          campeonatos.map(c => `
-            <option
-              value="${e(c.id)}"
-              ${
-                String(filtroHistorico.campeonato) ===
-                String(c.id)
-                  ? "selected"
-                  : ""
-              }
-            >
-              ${e(c.nome)}
-            </option>
-          `).join("")
-        }
-      </select>
-
-    </div>
-  `;
-}
-
-/* =========================================================
-   H2H — CONFRONTOS DIRETOS
-========================================================= */
-
 function mudarFiltroH2H(qtd) {
   filtroH2H =
-    Number(qtd) === 10 ? 10 : 5;
+    Number(qtd) === 10
+      ? 10
+      : 5;
 
   renderPaginaPartida();
 }
@@ -2962,6 +2689,10 @@ function extrairH2HExistente() {
       return fonte;
     }
 
+    if (Array.isArray(fonte?.jogos)) {
+      return fonte.jogos;
+    }
+
     if (Array.isArray(fonte?.partidas)) {
       return fonte.partidas;
     }
@@ -2974,77 +2705,64 @@ function extrairH2HExistente() {
   return [];
 }
 
-function normalizarPartidaH2H(p) {
-  const fixture =
-    p?.fixture || {};
-
-  const teams =
-    p?.teams || {};
-
-  const goals =
-    p?.goals || {};
+function dadosJogoH2H(j = {}) {
+  const fixture = j.fixture || {};
+  const teams = j.teams || {};
+  const goals = j.goals || {};
 
   return {
     id:
-      fixture.id ||
-      p.fixtureId ||
-      p.id,
+      j.id ||
+      fixture.id,
 
     data:
-      fixture.date ||
-      p.data ||
-      p.date,
+      j.data ||
+      j.date ||
+      fixture.date,
+
+    liga:
+      j.liga?.name ||
+      j.league?.name ||
+      j.liga ||
+      "",
 
     casa:
+      j.casa?.name ||
+      j.home?.name ||
       teams.home?.name ||
-      p.casa ||
-      p.home ||
-      "-",
+      j.timeCasa ||
+      "Casa",
 
     fora:
+      j.fora?.name ||
+      j.away?.name ||
       teams.away?.name ||
-      p.fora ||
-      p.away ||
-      "-",
-
-    logoCasa:
-      teams.home?.logo ||
-      p.logoCasa ||
-      "",
-
-    logoFora:
-      teams.away?.logo ||
-      p.logoFora ||
-      "",
+      j.timeFora ||
+      "Fora",
 
     golsCasa:
+      j.golsCasa ??
+      j.homeGoals ??
+      j.casa?.goals ??
       goals.home ??
-      p.golsCasa ??
-      p.homeGoals ??
       "-",
 
     golsFora:
+      j.golsFora ??
+      j.awayGoals ??
+      j.fora?.goals ??
       goals.away ??
-      p.golsFora ??
-      p.awayGoals ??
-      "-",
-
-    liga:
-      p?.league?.name ||
-      p?.liga?.name ||
-      p?.competicao ||
-      ""
+      "-"
   };
 }
 
-function linhaH2H(p) {
-  const x =
-    normalizarPartidaH2H(p);
+function cardJogoH2H(j) {
+  const d = dadosJogoH2H(j);
 
   return `
     <div
       style="
-        padding:12px 0;
+        padding:12px 4px;
         border-bottom:1px solid rgba(255,255,255,.07);
       "
     >
@@ -3052,94 +2770,50 @@ function linhaH2H(p) {
         style="
           display:flex;
           justify-content:space-between;
-          gap:10px;
-          margin-bottom:8px;
-          font-size:11px;
-          opacity:.55;
+          gap:8px;
+          font-size:10px;
+          opacity:.5;
         "
       >
-        <span>${e(dataCurta(x.data))}</span>
-        <span>${e(x.liga)}</span>
+        <span>${e(dataCurta(d.data))}</span>
+        <span>${e(d.liga)}</span>
       </div>
 
       <div
         style="
           display:grid;
-          grid-template-columns:1fr auto 1fr;
-          gap:8px;
+          grid-template-columns:1fr auto;
+          gap:10px;
+          margin-top:8px;
           align-items:center;
         "
       >
+        <div>
+          <div style="font-weight:850">
+            ${e(d.casa)}
+          </div>
 
-        <div
-          style="
-            display:flex;
-            align-items:center;
-            gap:7px;
-            min-width:0;
-          "
-        >
-          ${
-            x.logoCasa
-              ? `
-                <img
-                  src="${e(x.logoCasa)}"
-                  style="
-                    width:26px;
-                    height:26px;
-                    object-fit:contain;
-                  "
-                >
-              `
-              : ""
-          }
-
-          <strong>
-            ${e(x.casa)}
-          </strong>
+          <div
+            style="
+              margin-top:7px;
+              font-weight:850;
+            "
+          >
+            ${e(d.fora)}
+          </div>
         </div>
 
         <div
           style="
-            font-size:17px;
+            font-size:15px;
             font-weight:950;
+            text-align:center;
+            line-height:1.8;
           "
         >
-          ${valor(x.golsCasa)}
-          -
-          ${valor(x.golsFora)}
+          <div>${e(d.golsCasa)}</div>
+          <div>${e(d.golsFora)}</div>
         </div>
-
-        <div
-          style="
-            display:flex;
-            justify-content:flex-end;
-            align-items:center;
-            gap:7px;
-            min-width:0;
-            text-align:right;
-          "
-        >
-          <strong>
-            ${e(x.fora)}
-          </strong>
-
-          ${
-            x.logoFora
-              ? `
-                <img
-                  src="${e(x.logoFora)}"
-                  style="
-                    width:26px;
-                    height:26px;
-                    object-fit:contain;
-                  "
-                >
-              `
-              : ""
-          }
-        </div>
-
       </div>
     </div>
   `;
@@ -3149,663 +2823,42 @@ function renderH2H() {
   const todos =
     extrairH2HExistente();
 
-  const selecionados =
-    todos.slice(0, filtroH2H);
-
-  return `
-    ${painel(`
-      ${tituloSecao(
-        "H2H • Confrontos diretos",
-        "Histórico entre as duas equipes"
-      )}
-
-      <div
-        style="
-          display:flex;
-          gap:8px;
-          margin-bottom:14px;
-        "
-      >
-        ${botao(
-          "Últimos 5",
-          "mudarFiltroH2H(5)",
-          filtroH2H === 5
-        )}
-
-        ${botao(
-          "Últimos 10",
-          "mudarFiltroH2H(10)",
-          filtroH2H === 10
-        )}
-      </div>
-
-      ${
-        selecionados.length
-          ? selecionados
-              .map(linhaH2H)
-              .join("")
-          : `
-            <div
-              style="
-                padding:20px;
-                text-align:center;
-                border-radius:12px;
-                background:rgba(255,255,255,.035);
-              "
-            >
-              <strong>
-                H2H aguardando dados do servidor
-              </strong>
-
-              <div
-                style="
-                  margin-top:7px;
-                  opacity:.6;
-                  font-size:12px;
-                  line-height:1.5;
-                "
-              >
-                A interface já está pronta.
-                Na etapa do backend adicionaremos a rota
-                que busca os últimos confrontos entre
-                estas duas equipes.
-              </div>
-            </div>
-          `
-      }
-    `)}
-  `;
-}
-  /* =========================================================
-   MOTOR DE ANÁLISE HISTÓRICA DOS TIMES
-========================================================= */
-
-function partidasFiltradasDoLado(lado) {
-  const partidas =
-    partidasHistoricoLado(
-      lado,
-      filtroHistorico.quantidade
+  const jogosH2H =
+    todos.slice(
+      0,
+      filtroH2H
     );
-
-  return filtrarPartidasHistoricas(
-    partidas,
-    filtroHistorico.local,
-    filtroHistorico.campeonato
-  );
-}
-
-function numeroHistorico(p, nomes = []) {
-  for (const nome of nomes) {
-    const valorCampo = p?.[nome];
-
-    if (
-      valorCampo !== null &&
-      valorCampo !== undefined &&
-      valorCampo !== ""
-    ) {
-      const x = Number(valorCampo);
-
-      if (Number.isFinite(x)) {
-        return x;
-      }
-    }
-  }
-
-  return 0;
-}
-
-function estatisticasPartidaHistorica(p) {
-  return {
-    golsFavor:
-      numeroHistorico(
-        p,
-        ["golsFavor", "gols", "goalsFor"]
-      ),
-
-    golsContra:
-      numeroHistorico(
-        p,
-        ["golsContra", "goalsAgainst"]
-      ),
-
-    chutes:
-      numeroHistorico(
-        p,
-        [
-          "chutes",
-          "totalChutes",
-          "total_chutes",
-          "shots"
-        ]
-      ),
-
-    chutesGol:
-      numeroHistorico(
-        p,
-        [
-          "chutesGol",
-          "chutesNoGol",
-          "chutes_gol",
-          "shotsOnGoal"
-        ]
-      ),
-
-    escanteios:
-      numeroHistorico(
-        p,
-        [
-          "escanteios",
-          "corners"
-        ]
-      ),
-
-    faltas:
-      numeroHistorico(
-        p,
-        [
-          "faltas",
-          "fouls"
-        ]
-      ),
-
-    amarelos:
-      numeroHistorico(
-        p,
-        [
-          "amarelos",
-          "cartoesAmarelos",
-          "yellowCards"
-        ]
-      ),
-
-    vermelhos:
-      numeroHistorico(
-        p,
-        [
-          "vermelhos",
-          "cartoesVermelhos",
-          "redCards"
-        ]
-      )
-  };
-}
-
-function resumoHistoricoTime(partidas) {
-  const lista =
-    safeArray(partidas);
-
-  const quantidade =
-    lista.length;
-
-  const total = {
-    golsFavor: 0,
-    golsContra: 0,
-    chutes: 0,
-    chutesGol: 0,
-    escanteios: 0,
-    faltas: 0,
-    amarelos: 0,
-    vermelhos: 0
-  };
-
-  lista.forEach(p => {
-    const s =
-      estatisticasPartidaHistorica(p);
-
-    Object.keys(total).forEach(
-      campo => {
-        total[campo] +=
-          n(s[campo]);
-      }
-    );
-  });
-
-  const medias = {};
-
-  Object.keys(total).forEach(
-    campo => {
-      medias[campo] =
-        quantidade
-          ? total[campo] / quantidade
-          : 0;
-    }
-  );
-
-  return {
-    quantidade,
-    total,
-    medias
-  };
-}
-
-/* =========================================================
-   LINHAS AUTOMÁTICAS PARA TESTE DE TENDÊNCIA
-========================================================= */
-
-function testarLinha(
-  partidas,
-  getter,
-  linha,
-  operador = "mais"
-) {
-  const lista =
-    safeArray(partidas);
-
-  if (!lista.length) {
-    return {
-      acertos: 0,
-      total: 0,
-      percentual: 0,
-      media: 0
-    };
-  }
-
-  const valores =
-    lista.map(p =>
-      n(getter(p))
-    );
-
-  const acertos =
-    valores.filter(v => {
-      if (operador === "menos") {
-        return v < linha;
-      }
-
-      return v > linha;
-    }).length;
-
-  return {
-    acertos,
-    total: valores.length,
-    percentual:
-      pct(
-        acertos,
-        valores.length
-      ),
-    media:
-      valores.reduce(
-        (a, b) => a + b,
-        0
-      ) / valores.length
-  };
-}
-
-function gerarTendenciasTime(partidas) {
-  const lista =
-    safeArray(partidas);
-
-  if (!lista.length) {
-    return [];
-  }
-
-  const mercados = [
-    {
-      nome: "Gols marcados",
-      getter: p =>
-        estatisticasPartidaHistorica(p)
-          .golsFavor,
-      linhas: [0.5, 1.5, 2.5]
-    },
-
-    {
-      nome: "Gols totais",
-      getter: p => {
-        const s =
-          estatisticasPartidaHistorica(p);
-
-        return (
-          s.golsFavor +
-          s.golsContra
-        );
-      },
-      linhas: [1.5, 2.5, 3.5]
-    },
-
-    {
-      nome: "Escanteios",
-      getter: p =>
-        estatisticasPartidaHistorica(p)
-          .escanteios,
-      linhas: [
-        3.5,
-        4.5,
-        5.5,
-        6.5,
-        7.5,
-        8.5,
-        9.5
-      ]
-    },
-
-    {
-      nome: "Chutes",
-      getter: p =>
-        estatisticasPartidaHistorica(p)
-          .chutes,
-      linhas: [
-        7.5,
-        8.5,
-        9.5,
-        10.5,
-        11.5,
-        12.5,
-        13.5,
-        14.5
-      ]
-    },
-
-    {
-      nome: "Chutes no alvo",
-      getter: p =>
-        estatisticasPartidaHistorica(p)
-          .chutesGol,
-      linhas: [
-        1.5,
-        2.5,
-        3.5,
-        4.5,
-        5.5,
-        6.5
-      ]
-    },
-
-    {
-      nome: "Faltas",
-      getter: p =>
-        estatisticasPartidaHistorica(p)
-          .faltas,
-      linhas: [
-        7.5,
-        8.5,
-        9.5,
-        10.5,
-        11.5,
-        12.5,
-        13.5,
-        14.5
-      ]
-    },
-
-    {
-      nome: "Cartões amarelos",
-      getter: p =>
-        estatisticasPartidaHistorica(p)
-          .amarelos,
-      linhas: [
-        0.5,
-        1.5,
-        2.5,
-        3.5,
-        4.5
-      ]
-    }
-  ];
-
-  const tendencias = [];
-
-  mercados.forEach(mercado => {
-    mercado.linhas.forEach(linha => {
-      const r =
-        testarLinha(
-          lista,
-          mercado.getter,
-          linha,
-          "mais"
-        );
-
-      if (
-        r.total > 0 &&
-        r.percentual >=
-          CONFIG.frequenciaMinima
-      ) {
-        tendencias.push({
-          mercado:
-            mercado.nome,
-
-          linha,
-
-          tipo:
-            "Mais de",
-
-          acertos:
-            r.acertos,
-
-          total:
-            r.total,
-
-          percentual:
-            r.percentual,
-
-          media:
-            r.media
-        });
-      }
-    });
-  });
-
-  return tendencias.sort(
-    (a, b) => {
-
-      if (
-        b.percentual !==
-        a.percentual
-      ) {
-        return (
-          b.percentual -
-          a.percentual
-        );
-      }
-
-      return (
-        b.total -
-        a.total
-      );
-    }
-  );
-}
-
-/* =========================================================
-   CARDS DE MÉDIAS
-========================================================= */
-
-function cardMediaHistorica(
-  nome,
-  total,
-  mediaValor
-) {
-  return `
-    <div
-      style="
-        border-radius:12px;
-        padding:12px;
-        background:rgba(255,255,255,.04);
-      "
-    >
-      <div
-        style="
-          font-size:11px;
-          opacity:.6;
-          font-weight:800;
-        "
-      >
-        ${e(nome)}
-      </div>
-
-      <div
-        style="
-          margin-top:7px;
-          font-size:19px;
-          font-weight:950;
-        "
-      >
-        ${n(mediaValor).toFixed(1)}
-      </div>
-
-      <div
-        style="
-          margin-top:3px;
-          font-size:10px;
-          opacity:.5;
-        "
-      >
-        Total: ${n(total).toFixed(0)}
-      </div>
-    </div>
-  `;
-}
-
-function blocoResumoTime(
-  lado,
-  nomeTime
-) {
-  const partidas =
-    partidasFiltradasDoLado(lado);
-
-  const resumo =
-    resumoHistoricoTime(partidas);
 
   return painel(`
     ${tituloSecao(
-      nomeTime,
-      `${resumo.quantidade} partida(s) na amostra selecionada`
+      "Confrontos diretos",
+      "Histórico H2H entre as duas equipes"
     )}
 
     <div
       style="
-        display:grid;
-        grid-template-columns:repeat(2,minmax(0,1fr));
+        display:flex;
         gap:8px;
+        margin-bottom:13px;
       "
     >
-
-      ${cardMediaHistorica(
-        "Gols marcados",
-        resumo.total.golsFavor,
-        resumo.medias.golsFavor
+      ${botao(
+        "Últimos 5",
+        "mudarFiltroH2H(5)",
+        filtroH2H === 5
       )}
 
-      ${cardMediaHistorica(
-        "Gols sofridos",
-        resumo.total.golsContra,
-        resumo.medias.golsContra
+      ${botao(
+        "Últimos 10",
+        "mudarFiltroH2H(10)",
+        filtroH2H === 10
       )}
-
-      ${cardMediaHistorica(
-        "Chutes",
-        resumo.total.chutes,
-        resumo.medias.chutes
-      )}
-
-      ${cardMediaHistorica(
-        "Chutes no alvo",
-        resumo.total.chutesGol,
-        resumo.medias.chutesGol
-      )}
-
-      ${cardMediaHistorica(
-        "Escanteios",
-        resumo.total.escanteios,
-        resumo.medias.escanteios
-      )}
-
-      ${cardMediaHistorica(
-        "Faltas",
-        resumo.total.faltas,
-        resumo.medias.faltas
-      )}
-
-      ${cardMediaHistorica(
-        "Amarelos",
-        resumo.total.amarelos,
-        resumo.medias.amarelos
-      )}
-
-      ${cardMediaHistorica(
-        "Vermelhos",
-        resumo.total.vermelhos,
-        resumo.medias.vermelhos
-      )}
-
     </div>
-  `);
-}
-
-/* =========================================================
-   TENDÊNCIAS >= 80%
-========================================================= */
-
-function blocoTendenciasTime(
-  lado,
-  nomeTime
-) {
-  const partidas =
-    partidasFiltradasDoLado(lado);
-
-  const tendencias =
-    gerarTendenciasTime(partidas);
-
-  return painel(`
-    ${tituloSecao(
-      `Tendências • ${nomeTime}`,
-      `Somente frequências históricas ≥ ${CONFIG.frequenciaMinima}%`
-    )}
 
     ${
-      tendencias.length
-        ? tendencias
-            .slice(0, 15)
-            .map(t => `
-              <div
-                style="
-                  padding:12px 0;
-                  border-bottom:1px solid rgba(255,255,255,.07);
-                "
-              >
-                <div
-                  style="
-                    display:flex;
-                    justify-content:space-between;
-                    gap:12px;
-                  "
-                >
-                  <strong>
-                    ${e(t.mercado)}
-                    •
-                    ${e(t.tipo)}
-                    ${e(t.linha)}
-                  </strong>
-
-                  <strong
-                    style="
-                      color:#2ee58b;
-                      white-space:nowrap;
-                    "
-                  >
-                    ${t.percentual}%
-                  </strong>
-                </div>
-
-                <div
-                  style="
-                    margin-top:5px;
-                    display:flex;
-                    justify-content:space-between;
-                    gap:10px;
-                    font-size:11px;
-                    opacity:.65;
-                  "
-                >
-                  <span>
-                    ${t.acertos}/${t.total} jogos
-                  </span>
-
-                  <span>
-                    Média:
-                    ${n(t.media).toFixed(1)}
-                  </span>
-                </div>
-              </div>
-            `)
+      jogosH2H.length
+        ? jogosH2H
+            .map(cardJogoH2H)
             .join("")
         : `
           <div
@@ -3816,1340 +2869,897 @@ function blocoTendenciasTime(
               background:rgba(255,255,255,.035);
             "
           >
-            Nenhuma tendência ≥
-            ${CONFIG.frequenciaMinima}%
-            encontrada nesta amostra.
-          </div>
-        `
-    }
+            <strong>
+              Nenhum confronto direto encontrado.
+            </strong>
 
-    <div
-      style="
-        margin-top:12px;
-        font-size:11px;
-        opacity:.55;
-        line-height:1.5;
-      "
-    >
-      Estes percentuais representam frequência histórica
-      na amostra selecionada, não probabilidade garantida
-      para a próxima partida.
-    </div>
-  `);
-}
-
-/* =========================================================
-   LISTA JOGO A JOGO DO TIME
-========================================================= */
-
-function linhaHistoricoTime(p) {
-  const s =
-    estatisticasPartidaHistorica(p);
-
-  const resultado =
-    resultadoPartidaHistorica(p);
-
-  return `
-    <div
-      style="
-        padding:12px 0;
-        border-bottom:1px solid rgba(255,255,255,.07);
-      "
-    >
-      <div
-        style="
-          display:flex;
-          justify-content:space-between;
-          gap:8px;
-          align-items:center;
-        "
-      >
-        <div>
-          <strong>
-            ${e(
-              p.adversario?.name ||
-              p.adversario ||
-              "Adversário"
-            )}
-          </strong>
-
-          <div
-            style="
-              margin-top:3px;
-              font-size:10px;
-              opacity:.55;
-            "
-          >
-            ${e(dataCurta(p.data))}
-            •
-            ${e(nomeLigaHistorica(p))}
-            •
-            ${
-              partidaEhCasa(p)
-                ? "Casa"
-                : partidaEhFora(p)
-                  ? "Fora"
-                  : "Geral"
-            }
-          </div>
-        </div>
-
-        <span
-          style="
-            min-width:27px;
-            height:27px;
-            border-radius:7px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            background:${corResultado(resultado)};
-            color:#07120d;
-            font-weight:950;
-          "
-        >
-          ${resultado}
-        </span>
-      </div>
-
-      <div
-        style="
-          display:grid;
-          grid-template-columns:repeat(4,minmax(0,1fr));
-          gap:6px;
-          margin-top:10px;
-          font-size:10px;
-          text-align:center;
-        "
-      >
-        <div>
-          <strong>
-            ${s.golsFavor}-${s.golsContra}
-          </strong>
-          <br>
-          <span style="opacity:.55">
-            Gols
-          </span>
-        </div>
-
-        <div>
-          <strong>
-            ${s.chutes}
-          </strong>
-          <br>
-          <span style="opacity:.55">
-            Chutes
-          </span>
-        </div>
-
-        <div>
-          <strong>
-            ${s.chutesGol}
-          </strong>
-          <br>
-          <span style="opacity:.55">
-            No alvo
-          </span>
-        </div>
-
-        <div>
-          <strong>
-            ${s.escanteios}
-          </strong>
-          <br>
-          <span style="opacity:.55">
-            Cantos
-          </span>
-        </div>
-
-        <div>
-          <strong>
-            ${s.faltas}
-          </strong>
-          <br>
-          <span style="opacity:.55">
-            Faltas
-          </span>
-        </div>
-
-        <div>
-          <strong>
-            ${s.amarelos}
-          </strong>
-          <br>
-          <span style="opacity:.55">
-            Amarelos
-          </span>
-        </div>
-
-        <div>
-          <strong>
-            ${s.vermelhos}
-          </strong>
-          <br>
-          <span style="opacity:.55">
-            Vermelhos
-          </span>
-        </div>
-
-        <div>
-          <strong>
-            ${e(
-              p.golsFavor != null
-                ? "OK"
-                : "-"
-            )}
-          </strong>
-          <br>
-          <span style="opacity:.55">
-            Dados
-          </span>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function blocoJogosTime(
-  lado,
-  nomeTime
-) {
-  const partidas =
-    partidasFiltradasDoLado(lado);
-
-  return painel(`
-    ${tituloSecao(
-      `Jogo a jogo • ${nomeTime}`,
-      "Veja o valor registrado em cada partida da amostra"
-    )}
-
-    ${
-      partidas.length
-        ? partidas
-            .map(linhaHistoricoTime)
-            .join("")
-        : `
-          <div
-            style="
-              padding:18px;
-              text-align:center;
-              opacity:.65;
-            "
-          >
-            Nenhuma partida encontrada com estes filtros.
+            <div
+              style="
+                margin-top:6px;
+                font-size:11px;
+                opacity:.55;
+              "
+            >
+              O H2H depende dos dados disponíveis no servidor.
+            </div>
           </div>
         `
     }
   `);
-}
-
+    }
 /* =========================================================
    ANÁLISE AUTOMÁTICA
 ========================================================= */
 
-function renderAnaliseAutomatica() {
-  if (!historicoAtual) {
-    return painel(`
-      ${tituloSecao(
-        "Análise automática",
-        "Histórico ainda indisponível."
-      )}
-
-      <div style="opacity:.65">
-        Não há dados históricos suficientes para esta partida.
-      </div>
-    `);
-  }
-
-  return `
-    ${painel(`
-      ${tituloSecao(
-        "Filtros da análise",
-        "Escolha a amostra usada nos cálculos."
-      )}
-
-      ${controlesHistorico()}
-    `)}
-
-    ${blocoResumoTime(
-      "casa",
-      partidaAtual.home.name
-    )}
-
-    ${blocoTendenciasTime(
-      "casa",
-      partidaAtual.home.name
-    )}
-
-    ${blocoJogosTime(
-      "casa",
-      partidaAtual.home.name
-    )}
-
-    ${blocoResumoTime(
-      "fora",
-      partidaAtual.away.name
-    )}
-
-    ${blocoTendenciasTime(
-      "fora",
-      partidaAtual.away.name
-    )}
-
-    ${blocoJogosTime(
-      "fora",
-      partidaAtual.away.name
-    )}
-  `;
-}
-  /* =========================================================
-   ESCALAÇÕES
-========================================================= */
-
-function normalizarLineupTime(item = {}) {
-  const team =
-    item.team || {};
-
-  const coach =
-    item.coach || {};
-
-  const formation =
-    item.formation || "-";
-
-  const titulares =
-    safeArray(
-      item.startXI ||
-      item.startingXI ||
-      item.titulares
-    ).map(x => {
-      const p =
-        x.player || x;
-
-      return {
-        id: p.id,
-        nome:
-          p.name ||
-          p.nome ||
-          "Jogador",
-
-        numero:
-          p.number ??
-          p.numero ??
-          "-",
-
-        posicao:
-          p.pos ||
-          p.position ||
-          p.posicao ||
-          "",
-
-        grid:
-          p.grid ||
-          x.grid ||
-          "",
-
-        foto:
-          p.photo ||
-          p.foto ||
-          (p.id
-            ? `${API}/logo/player/${p.id}`
-            : "")
-      };
-    });
-
-  const reservas =
-    safeArray(
-      item.substitutes ||
-      item.reservas
-    ).map(x => {
-      const p =
-        x.player || x;
-
-      return {
-        id: p.id,
-
-        nome:
-          p.name ||
-          p.nome ||
-          "Jogador",
-
-        numero:
-          p.number ??
-          p.numero ??
-          "-",
-
-        posicao:
-          p.pos ||
-          p.position ||
-          p.posicao ||
-          "",
-
-        foto:
-          p.photo ||
-          p.foto ||
-          (p.id
-            ? `${API}/logo/player/${p.id}`
-            : "")
-      };
-    });
-
-  return {
-    teamId:
-      team.id,
-
-    teamName:
-      team.name ||
-      "Equipe",
-
-    teamLogo:
-      team.logo ||
-      logoTime(team.id),
-
-    formation,
-
-    coach: {
-      id:
-        coach.id,
-
-      name:
-        coach.name ||
-        "-",
-
-      photo:
-        coach.photo ||
-        ""
-    },
-
-    titulares,
-    reservas
-  };
-}
-
-function lineupsNormalizados() {
-  const bruto =
-    safeArray(
-      partidaAtual?.lineups
-    );
-
-  return bruto.map(
-    normalizarLineupTime
-  );
-}
-
-/* =========================================================
-   POSIÇÃO NO CAMPO
-========================================================= */
-
-function gridJogador(grid) {
-  if (!grid) {
-    return null;
-  }
-
-  const partes =
-    String(grid)
-      .split(":")
-      .map(Number);
-
-  if (
-    partes.length !== 2 ||
-    !Number.isFinite(partes[0]) ||
-    !Number.isFinite(partes[1])
-  ) {
-    return null;
-  }
-
-  return {
-    linha: partes[0],
-    coluna: partes[1]
-  };
-}
-
-function agruparJogadoresPorLinha(jogadores) {
-  const mapa =
-    new Map();
-
-  safeArray(jogadores)
-    .forEach(j => {
-      const grid =
-        gridJogador(j.grid);
-
-      const linha =
-        grid?.linha || 99;
-
-      if (!mapa.has(linha)) {
-        mapa.set(
-          linha,
-          []
-        );
-      }
-
-      mapa
-        .get(linha)
-        .push({
-          ...j,
-          coluna:
-            grid?.coluna || 99
-        });
-    });
-
-  return [...mapa.entries()]
-    .sort(
-      (a, b) =>
-        a[0] - b[0]
-    )
-    .map(
-      ([linha, jogadoresLinha]) => ({
-        linha,
-
-        jogadores:
-          jogadoresLinha.sort(
-            (a, b) =>
-              a.coluna -
-              b.coluna
-          )
-      })
-    );
-}
-
-/* =========================================================
-   JOGADOR NO CAMPO
-========================================================= */
-
-function jogadorCampo(j) {
-  const foto =
-    fotoJogador(j);
-
-  return `
-    <button
-      onclick="abrirJogador(${Number(j.id)})"
-      style="
-        width:72px;
-        border:0;
-        background:transparent;
-        color:#fff;
-        padding:2px;
-        cursor:pointer;
-      "
-    >
-
-      <div
-        style="
-          position:relative;
-          width:48px;
-          height:48px;
-          margin:auto;
-        "
-      >
-        ${
-          foto
-            ? `
-              <img
-                src="${e(foto)}"
-                onerror="
-                  this.style.display='none';
-                  this.nextElementSibling.style.display='flex';
-                "
-                style="
-                  width:48px;
-                  height:48px;
-                  border-radius:50%;
-                  object-fit:cover;
-                  border:2px solid rgba(255,255,255,.9);
-                  background:#18231e;
-                "
-              >
-            `
-            : ""
-        }
-
-        <div
-          style="
-            ${
-              foto
-                ? "display:none;"
-                : "display:flex;"
-            }
-            width:48px;
-            height:48px;
-            border-radius:50%;
-            align-items:center;
-            justify-content:center;
-            background:#18231e;
-            border:2px solid rgba(255,255,255,.9);
-            font-size:16px;
-            font-weight:950;
-          "
-        >
-          ${e(j.numero)}
-        </div>
-
-        <span
-          style="
-            position:absolute;
-            right:-4px;
-            bottom:-3px;
-            min-width:20px;
-            height:20px;
-            padding:0 3px;
-            border-radius:10px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            background:#0c1712;
-            border:1px solid #2ee58b;
-            color:#2ee58b;
-            font-size:10px;
-            font-weight:950;
-          "
-        >
-          ${e(j.numero)}
-        </span>
-      </div>
-
-      <div
-        style="
-          margin-top:5px;
-          font-size:10px;
-          line-height:1.15;
-          font-weight:900;
-          overflow:hidden;
-          display:-webkit-box;
-          -webkit-line-clamp:2;
-          -webkit-box-orient:vertical;
-        "
-      >
-        ${e(j.nome)}
-      </div>
-
-    </button>
-  `;
-}
-
-/* =========================================================
-   CAMPO DE FUTEBOL
-========================================================= */
-
-function campoEscalacao(lineup) {
-  const linhas =
-    agruparJogadoresPorLinha(
-      lineup.titulares
-    );
-
-  return `
-    <div
-      style="
-        position:relative;
-        overflow:hidden;
-        border-radius:18px;
-        padding:16px 5px;
-        min-height:520px;
-        background:
-          linear-gradient(
-            rgba(8,70,43,.94),
-            rgba(6,55,34,.96)
-          );
-        border:2px solid rgba(255,255,255,.28);
-      "
-    >
-
-      <div
-        style="
-          position:absolute;
-          inset:10px;
-          border:1px solid rgba(255,255,255,.45);
-          pointer-events:none;
-        "
-      ></div>
-
-      <div
-        style="
-          position:absolute;
-          left:10px;
-          right:10px;
-          top:50%;
-          border-top:1px solid rgba(255,255,255,.45);
-          pointer-events:none;
-        "
-      ></div>
-
-      <div
-        style="
-          position:absolute;
-          width:76px;
-          height:76px;
-          border:1px solid rgba(255,255,255,.45);
-          border-radius:50%;
-          left:50%;
-          top:50%;
-          transform:translate(-50%,-50%);
-          pointer-events:none;
-        "
-      ></div>
-
-      <div
-        style="
-          position:relative;
-          z-index:2;
-          display:flex;
-          flex-direction:column;
-          justify-content:space-around;
-          min-height:485px;
-        "
-      >
-        ${
-          linhas.map(linha => `
-            <div
-              style="
-                display:flex;
-                justify-content:space-around;
-                align-items:flex-start;
-                gap:2px;
-              "
-            >
-              ${
-                linha.jogadores
-                  .map(jogadorCampo)
-                  .join("")
-              }
-            </div>
-          `).join("")
-        }
-      </div>
-
-    </div>
-  `;
-}
-
-/* =========================================================
-   RESERVAS
-========================================================= */
-
-function cardReserva(j) {
-  const foto =
-    fotoJogador(j);
-
-  return `
-    <div
-      onclick="abrirJogador(${Number(j.id)})"
-      style="
-        display:grid;
-        grid-template-columns:42px 1fr auto;
-        gap:10px;
-        align-items:center;
-        padding:10px 0;
-        border-bottom:1px solid rgba(255,255,255,.07);
-        cursor:pointer;
-      "
-    >
-      ${
-        foto
-          ? `
-            <img
-              src="${e(foto)}"
-              onerror="this.style.display='none'"
-              style="
-                width:42px;
-                height:42px;
-                border-radius:50%;
-                object-fit:cover;
-              "
-            >
-          `
-          : `
-            <div
-              style="
-                width:42px;
-                height:42px;
-                border-radius:50%;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                background:rgba(255,255,255,.06);
-                font-weight:950;
-              "
-            >
-              ${e(j.numero)}
-            </div>
-          `
-      }
-
-      <div>
-        <div style="font-weight:900">
-          ${e(j.nome)}
-        </div>
-
-        <div
-          style="
-            margin-top:3px;
-            font-size:11px;
-            opacity:.55;
-          "
-        >
-          ${e(j.posicao || "Jogador")}
-        </div>
-      </div>
-
-      <div
-        style="
-          font-size:12px;
-          font-weight:900;
-          color:#2ee58b;
-        "
-      >
-        #${e(j.numero)}
-      </div>
-    </div>
-  `;
-}
-
-/* =========================================================
-   BLOCO DE UMA EQUIPE NA ESCALAÇÃO
-========================================================= */
-
-function blocoEscalacaoTime(lineup) {
-  return `
-    ${painel(`
-      <div
-        style="
-          display:flex;
-          align-items:center;
-          gap:10px;
-          margin-bottom:14px;
-        "
-      >
-        ${
-          lineup.teamLogo
-            ? `
-              <img
-                src="${e(lineup.teamLogo)}"
-                onerror="this.style.display='none'"
-                style="
-                  width:38px;
-                  height:38px;
-                  object-fit:contain;
-                "
-              >
-            `
-            : ""
-        }
-
-        <div>
-          <div
-            style="
-              font-size:17px;
-              font-weight:950;
-            "
-          >
-            ${e(lineup.teamName)}
-          </div>
-
-          <div
-            style="
-              margin-top:2px;
-              font-size:11px;
-              opacity:.6;
-            "
-          >
-            Formação:
-            ${e(lineup.formation)}
-          </div>
-        </div>
-
-        <div
-          style="
-            margin-left:auto;
-            padding:6px 8px;
-            border-radius:8px;
-            background:rgba(46,229,139,.1);
-            color:#2ee58b;
-            font-size:10px;
-            font-weight:950;
-          "
-        >
-          CONFIRMADA
-        </div>
-      </div>
-
-      ${campoEscalacao(lineup)}
-    `)}
-
-    ${painel(`
-      ${tituloSecao(
-        `Banco • ${lineup.teamName}`,
-        lineup.coach?.name &&
-        lineup.coach.name !== "-"
-          ? `Técnico: ${lineup.coach.name}`
-          : ""
-      )}
-
-      ${
-        lineup.reservas.length
-          ? lineup.reservas
-              .map(cardReserva)
-              .join("")
-          : `
-            <div style="opacity:.6">
-              Reservas ainda não disponíveis.
-            </div>
-          `
-      }
-    `)}
-  `;
-}
-
-/* =========================================================
-   ABA ESCALAÇÕES
-========================================================= */
-
-function renderEscalacoes() {
-  const lineups =
-    lineupsNormalizados();
-
-  if (!lineups.length) {
-    return painel(`
-      ${tituloSecao(
-        "Escalações",
-        "A escalação aparecerá quando estiver disponível pela competição."
-      )}
-
-      <div
-        style="
-          padding:20px;
-          text-align:center;
-          border-radius:12px;
-          background:rgba(255,255,255,.035);
-        "
-      >
-        <strong>
-          Escalações ainda não confirmadas
-        </strong>
-
-        <div
-          style="
-            margin-top:7px;
-            font-size:12px;
-            opacity:.6;
-            line-height:1.5;
-          "
-        >
-          Quando a API disponibilizar os titulares,
-          o campo será preenchido automaticamente.
-        </div>
-      </div>
-    `);
-  }
-
-  return `
-    ${painel(`
-      <div
-        style="
-          text-align:center;
-          color:#2ee58b;
-          font-size:12px;
-          font-weight:950;
-        "
-      >
-        ✓ ESCALAÇÕES CONFIRMADAS
-      </div>
-
-      <div
-        style="
-          margin-top:5px;
-          text-align:center;
-          font-size:11px;
-          opacity:.55;
-        "
-      >
-        Toque em qualquer jogador para abrir sua análise.
-      </div>
-    `)}
-
-    ${
-      lineups
-        .map(blocoEscalacaoTime)
-        .join("")
-    }
-  `;
-}
-  /* =========================================================
-   FICHA INDIVIDUAL DO JOGADOR
-========================================================= */
-
-let jogadorSelecionado = null;
-
-let filtroJogador = {
+let filtroHistorico = {
   quantidade: 10,
   local: "geral",
   campeonato: "todos"
 };
 
-function todosJogadoresHistoricos() {
-  const lados = ["casa", "fora"];
-  const resultado = [];
+function mudarQuantidadeHistorico(qtd) {
+  filtroHistorico.quantidade =
+    Number(qtd) === 5
+      ? 5
+      : 10;
 
-  lados.forEach(lado => {
-    const h = historicoAtual?.[lado];
-
-    const blocos = [
-      h?.ultimas5?.jogadores,
-      h?.ultimas10?.jogadores
-    ];
-
-    blocos.forEach(lista => {
-      safeArray(lista).forEach(p => {
-        resultado.push({
-          ...p,
-          lado
-        });
-      });
-    });
-  });
-
-  return resultado;
+  renderPaginaPartida();
 }
 
-function acharJogadorHistorico(id) {
-  return todosJogadoresHistoricos()
-    .find(
-      p =>
-        String(p.id) ===
-        String(id)
-    );
-}
-
-function acharJogadorAtual(id) {
-  const grupos =
-    safeArray(
-      partidaAtual?.jogadores
-    );
-
-  for (const grupo of grupos) {
-    const jogadores =
-      safeArray(
-        grupo.players ||
-        grupo.jogadores
-      );
-
-    for (const item of jogadores) {
-      const p =
-        item.player || item;
-
-      if (
-        String(p.id) ===
-        String(id)
-      ) {
-        return {
-          ...p,
-          estatisticas:
-            item.statistics ||
-            item.estatisticas ||
-            []
-        };
-      }
-    }
+function mudarLocalHistorico(local) {
+  if (
+    ["geral", "casa", "fora"]
+      .includes(local)
+  ) {
+    filtroHistorico.local =
+      local;
   }
 
-  return null;
+  renderPaginaPartida();
 }
 
-function abrirJogador(id) {
-  const historico =
-    acharJogadorHistorico(id);
+function mudarCampeonatoHistorico(id) {
+  filtroHistorico.campeonato =
+    String(id || "todos");
 
-  const atual =
-    acharJogadorAtual(id);
-
-  jogadorSelecionado = {
-    id,
-
-    nome:
-      atual?.name ||
-      atual?.nome ||
-      historico?.nome ||
-      historico?.name ||
-      "Jogador",
-
-    foto:
-      atual?.photo ||
-      atual?.foto ||
-      historico?.foto ||
-      historico?.photo ||
-      `${API}/logo/player/${id}`,
-
-    numero:
-      atual?.number ??
-      atual?.numero ??
-      historico?.numero ??
-      "-",
-
-    posicao:
-      atual?.position ||
-      atual?.posicao ||
-      historico?.posicao ||
-      ""
-  };
-
-  renderPaginaJogador();
+  renderPaginaPartida();
 }
 
 /* =========================================================
-   PARTIDAS DO JOGADOR
+   IDENTIFICAÇÃO DO CAMPEONATO
 ========================================================= */
 
-function partidasComJogador(id) {
-  const lados = [
-    {
-      nome: "casa",
-      dados: historicoAtual?.casa
-    },
-    {
-      nome: "fora",
-      dados: historicoAtual?.fora
-    }
-  ];
+function idLigaPartidaHistorica(p = {}) {
+  return String(
+    p.liga?.id ??
+    p.league?.id ??
+    p.ligaId ??
+    p.leagueId ??
+    ""
+  );
+}
 
-  const encontrados = [];
+function nomeLigaPartidaHistorica(p = {}) {
+  return (
+    p.liga?.name ||
+    p.league?.name ||
+    p.nomeLiga ||
+    p.competicao ||
+    "Competição"
+  );
+}
 
-  lados.forEach(lado => {
-    const partidas =
-      safeArray(
-        lado.dados?.ultimas10?.partidas
-      );
-
-    partidas.forEach(partida => {
-      const jogadores =
-        safeArray(
-          partida.jogadores
-        );
-
-      const jogador =
-        jogadores.find(
-          j =>
-            String(j.id) ===
-            String(id)
-        );
-
-      if (jogador) {
-        encontrados.push({
-          partida,
-          jogador,
-          lado:
-            lado.nome
-        });
-      }
-    });
-  });
-
-  const unicos =
+function campeonatosHistorico() {
+  const mapa =
     new Map();
 
-  encontrados.forEach(item => {
-    const chave =
-      item.partida.fixtureId ||
-      item.partida.id ||
-      `${item.partida.data}-${item.partida.adversario?.id || item.partida.adversario}`;
+  [
+    ...partidasHistoricoLado(
+      "casa",
+      10
+    ),
+    ...partidasHistoricoLado(
+      "fora",
+      10
+    )
+  ].forEach(p => {
+    const id =
+      idLigaPartidaHistorica(p);
 
-    if (!unicos.has(chave)) {
-      unicos.set(
+    const nome =
+      nomeLigaPartidaHistorica(p);
+
+    if (!id && !nome) {
+      return;
+    }
+
+    const chave =
+      id || nome;
+
+    if (!mapa.has(chave)) {
+      mapa.set(
         chave,
-        item
+        {
+          id: chave,
+          nome
+        }
       );
     }
   });
 
-  return [...unicos.values()]
-    .sort(
-      (a, b) =>
-        new Date(b.partida.data || 0) -
-        new Date(a.partida.data || 0)
-    );
-}
-
-function filtrarPartidasJogador(id) {
-  let lista =
-    partidasComJogador(id);
-
-  if (
-    filtroJogador.quantidade === 5
-  ) {
-    lista =
-      lista.slice(0, 5);
-  } else {
-    lista =
-      lista.slice(0, 10);
-  }
-
-  if (
-    filtroJogador.local === "casa"
-  ) {
-    lista =
-      lista.filter(
-        x =>
-          partidaEhCasa(
-            x.partida
-          )
-      );
-  }
-
-  if (
-    filtroJogador.local === "fora"
-  ) {
-    lista =
-      lista.filter(
-        x =>
-          partidaEhFora(
-            x.partida
-          )
-      );
-  }
-
-  if (
-    filtroJogador.campeonato !==
-    "todos"
-  ) {
-    lista =
-      lista.filter(
-        x =>
-          String(
-            idLigaHistorica(
-              x.partida
-            )
-          ) ===
-          String(
-            filtroJogador.campeonato
-          )
-      );
-  }
-
-  return lista;
+  return [
+    ...mapa.values()
+  ].sort(
+    (a, b) =>
+      String(a.nome)
+        .localeCompare(
+          String(b.nome),
+          "pt-BR"
+        )
+  );
 }
 
 /* =========================================================
-   ESTATÍSTICAS DO JOGADOR
+   FILTRO DAS PARTIDAS HISTÓRICAS
 ========================================================= */
 
-function estatisticaJogador(j = {}) {
-  return {
-    minutos:
-      n(j.minutos),
+function localPartidaHistorica(
+  p,
+  lado
+) {
+  const local =
+    String(
+      p.local ||
+      p.mando ||
+      ""
+    ).toLowerCase();
 
-    nota:
-      n(j.nota),
+  if (
+    local === "casa" ||
+    local === "home"
+  ) {
+    return "casa";
+  }
+
+  if (
+    local === "fora" ||
+    local === "away"
+  ) {
+    return "fora";
+  }
+
+  /*
+    No histórico do backend, "local"
+    normalmente informa se o time analisado
+    atuou em casa ou fora.
+  */
+
+  return lado;
+}
+
+function filtrarPartidasHistoricas(
+  lado
+) {
+  const quantidade =
+    filtroHistorico.quantidade;
+
+  /*
+    Usamos até 10 partidas como base.
+    Depois aplicamos campeonato/local e
+    finalmente limitamos a 5 ou 10.
+  */
+
+  let partidas =
+    partidasHistoricoLado(
+      lado,
+      10
+    );
+
+  const campeonato =
+    String(
+      filtroHistorico.campeonato ||
+      "todos"
+    );
+
+  if (
+    campeonato !== "todos"
+  ) {
+    partidas =
+      partidas.filter(p => {
+        const id =
+          idLigaPartidaHistorica(p);
+
+        const nome =
+          nomeLigaPartidaHistorica(p);
+
+        return (
+          id === campeonato ||
+          nome === campeonato
+        );
+      });
+  }
+
+  if (
+    filtroHistorico.local !==
+    "geral"
+  ) {
+    partidas =
+      partidas.filter(
+        p =>
+          localPartidaHistorica(
+            p,
+            lado
+          ) ===
+          filtroHistorico.local
+      );
+  }
+
+  return partidas.slice(
+    0,
+    quantidade
+  );
+}
+
+/* =========================================================
+   EXTRAÇÃO DE ESTATÍSTICAS HISTÓRICAS
+========================================================= */
+
+function numeroCampo(
+  objeto,
+  campos = []
+) {
+  for (const campo of campos) {
+    const v =
+      objeto?.[campo];
+
+    if (
+      v !== null &&
+      v !== undefined &&
+      v !== ""
+    ) {
+      const numero =
+        Number(
+          String(v)
+            .replace("%", "")
+            .replace(",", ".")
+        );
+
+      if (
+        Number.isFinite(numero)
+      ) {
+        return numero;
+      }
+    }
+  }
+
+  return 0;
+}
+
+function estatisticasPartidaHistorica(
+  p = {}
+) {
+  const stats =
+    p.estatisticas ||
+    p.stats ||
+    p.statistics ||
+    {};
+
+  return {
+    gols:
+      numeroCampo(
+        p,
+        [
+          "golsFavor",
+          "gols",
+          "goalsFor"
+        ]
+      ),
+
+    golsSofridos:
+      numeroCampo(
+        p,
+        [
+          "golsContra",
+          "goalsAgainst"
+        ]
+      ),
 
     chutes:
-      n(j.chutes),
+      numeroCampo(
+        stats,
+        [
+          "chutes",
+          "totalShots",
+          "shots",
+          "total_shots"
+        ]
+      ) ||
+      numeroCampo(
+        p,
+        [
+          "chutes",
+          "totalShots"
+        ]
+      ),
 
     chutesGol:
-      n(
-        j.chutesGol ??
-        j.chutesNoGol
+      numeroCampo(
+        stats,
+        [
+          "chutesGol",
+          "shotsOnGoal",
+          "shots_on_goal",
+          "noAlvo"
+        ]
+      ) ||
+      numeroCampo(
+        p,
+        [
+          "chutesGol",
+          "shotsOnGoal"
+        ]
       ),
 
-    gols:
-      n(j.gols),
-
-    assistencias:
-      n(j.assistencias),
-
-    passes:
-      n(j.passes),
-
-    passesChave:
-      n(j.passesChave),
-
-    faltasCometidas:
-      n(
-        j.faltasCometidas
+    escanteios:
+      numeroCampo(
+        stats,
+        [
+          "escanteios",
+          "corners",
+          "cornerKicks"
+        ]
+      ) ||
+      numeroCampo(
+        p,
+        [
+          "escanteios",
+          "corners"
+        ]
       ),
 
-    faltasSofridas:
-      n(
-        j.faltasSofridas
+    faltas:
+      numeroCampo(
+        stats,
+        [
+          "faltas",
+          "fouls",
+          "foulsCommitted"
+        ]
+      ) ||
+      numeroCampo(
+        p,
+        [
+          "faltas",
+          "fouls"
+        ]
       ),
-
-    desarmes:
-      n(j.desarmes),
 
     amarelos:
-      n(j.amarelos),
+      numeroCampo(
+        stats,
+        [
+          "amarelos",
+          "yellowCards",
+          "yellow_cards"
+        ]
+      ) ||
+      numeroCampo(
+        p,
+        [
+          "amarelos",
+          "yellowCards"
+        ]
+      ),
 
     vermelhos:
-      n(j.vermelhos)
+      numeroCampo(
+        stats,
+        [
+          "vermelhos",
+          "redCards",
+          "red_cards"
+        ]
+      ) ||
+      numeroCampo(
+        p,
+        [
+          "vermelhos",
+          "redCards"
+        ]
+      )
   };
 }
 
-function resumoJogador(lista) {
-  const itens =
-    safeArray(lista);
+/* =========================================================
+   RESUMO DA AMOSTRA
+========================================================= */
 
-  const total = {
-    minutos: 0,
-    nota: 0,
+function resumoAmostraHistorica(
+  partidas
+) {
+  const lista =
+    safeArray(partidas);
+
+  const quantidade =
+    lista.length;
+
+  const totais = {
+    gols: 0,
+    golsSofridos: 0,
     chutes: 0,
     chutesGol: 0,
-    gols: 0,
-    assistencias: 0,
-    passes: 0,
-    passesChave: 0,
-    faltasCometidas: 0,
-    faltasSofridas: 0,
-    desarmes: 0,
+    escanteios: 0,
+    faltas: 0,
     amarelos: 0,
     vermelhos: 0
   };
 
-  itens.forEach(item => {
+  lista.forEach(p => {
     const s =
-      estatisticaJogador(
-        item.jogador
+      estatisticasPartidaHistorica(
+        p
       );
 
-    Object.keys(total)
+    Object.keys(totais)
       .forEach(campo => {
-        total[campo] +=
+        totais[campo] +=
           n(s[campo]);
       });
   });
 
-  const quantidade =
-    itens.length;
-
   const medias = {};
 
-  Object.keys(total)
+  Object.keys(totais)
     .forEach(campo => {
       medias[campo] =
         quantidade
-          ? total[campo] /
+          ? totais[campo] /
             quantidade
           : 0;
     });
 
   return {
     quantidade,
-    total,
+    totais,
     medias
   };
 }
 
-function miniCardJogador(
-  titulo,
-  mediaValor,
-  totalValor
+/* =========================================================
+   FREQUÊNCIA HISTÓRICA
+========================================================= */
+
+function frequenciaLinha(
+  partidas,
+  extrator,
+  linha,
+  comparador = ">="
 ) {
+  const lista =
+    safeArray(partidas);
+
+  if (!lista.length) {
+    return {
+      acertos: 0,
+      total: 0,
+      percentual: 0
+    };
+  }
+
+  let acertos = 0;
+
+  lista.forEach(p => {
+    const valor =
+      n(
+        extrator(
+          estatisticasPartidaHistorica(
+            p
+          )
+        )
+      );
+
+    let bateu = false;
+
+    if (comparador === ">") {
+      bateu =
+        valor > linha;
+    }
+
+    else if (
+      comparador === "<="
+    ) {
+      bateu =
+        valor <= linha;
+    }
+
+    else if (
+      comparador === "<"
+    ) {
+      bateu =
+        valor < linha;
+    }
+
+    else {
+      bateu =
+        valor >= linha;
+    }
+
+    if (bateu) {
+      acertos++;
+    }
+  });
+
+  return {
+    acertos,
+    total: lista.length,
+    percentual:
+      pct(
+        acertos,
+        lista.length
+      )
+  };
+}
+
+/* =========================================================
+   TENDÊNCIAS
+========================================================= */
+
+function gerarTendenciasHistoricas(
+  partidas
+) {
+  if (!partidas.length) {
+    return [];
+  }
+
+  const mercados = [
+    {
+      titulo: "1+ gol marcado",
+      linha: 1,
+      campo: s => s.gols
+    },
+
+    {
+      titulo: "2+ gols marcados",
+      linha: 2,
+      campo: s => s.gols
+    },
+
+    {
+      titulo: "3+ chutes no alvo",
+      linha: 3,
+      campo: s => s.chutesGol
+    },
+
+    {
+      titulo: "4+ chutes no alvo",
+      linha: 4,
+      campo: s => s.chutesGol
+    },
+
+    {
+      titulo: "8+ chutes",
+      linha: 8,
+      campo: s => s.chutes
+    },
+
+    {
+      titulo: "10+ chutes",
+      linha: 10,
+      campo: s => s.chutes
+    },
+
+    {
+      titulo: "3+ escanteios",
+      linha: 3,
+      campo: s => s.escanteios
+    },
+
+    {
+      titulo: "4+ escanteios",
+      linha: 4,
+      campo: s => s.escanteios
+    },
+
+    {
+      titulo: "5+ escanteios",
+      linha: 5,
+      campo: s => s.escanteios
+    },
+
+    {
+      titulo: "8+ faltas",
+      linha: 8,
+      campo: s => s.faltas
+    },
+
+    {
+      titulo: "10+ faltas",
+      linha: 10,
+      campo: s => s.faltas
+    },
+
+    {
+      titulo: "1+ cartão amarelo",
+      linha: 1,
+      campo: s => s.amarelos
+    },
+
+    {
+      titulo: "2+ cartões amarelos",
+      linha: 2,
+      campo: s => s.amarelos
+    }
+  ];
+
+  return mercados
+    .map(m => {
+      const f =
+        frequenciaLinha(
+          partidas,
+          m.campo,
+          m.linha
+        );
+
+      return {
+        ...m,
+        ...f
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.percentual -
+        a.percentual
+    );
+}
+
+/* =========================================================
+   CARD DE TENDÊNCIA
+========================================================= */
+
+function cardTendenciaHistorica(
+  t
+) {
+  const qualificada =
+    t.percentual >=
+    CONFIG.frequenciaMinima;
+
   return `
     <div
       style="
-        padding:11px 8px;
+        padding:12px;
         border-radius:12px;
-        background:rgba(255,255,255,.045);
-        text-align:center;
+        border:1px solid ${
+          qualificada
+            ? "rgba(46,229,139,.22)"
+            : "rgba(255,255,255,.07)"
+        };
+        background:${
+          qualificada
+            ? "rgba(46,229,139,.045)"
+            : "rgba(255,255,255,.025)"
+        };
+        margin-top:8px;
       "
     >
       <div
         style="
+          display:flex;
+          justify-content:space-between;
+          gap:10px;
+          align-items:center;
+        "
+      >
+        <div
+          style="
+            font-size:13px;
+            font-weight:900;
+          "
+        >
+          ${e(t.titulo)}
+        </div>
+
+        <div
+          style="
+            color:${
+              qualificada
+                ? "#2ee58b"
+                : "#fff"
+            };
+            font-size:17px;
+            font-weight:950;
+          "
+        >
+          ${t.percentual}%
+        </div>
+      </div>
+
+      <div
+        style="
+          margin-top:5px;
           font-size:10px;
-          opacity:.6;
-          font-weight:800;
+          opacity:.55;
+        "
+      >
+        ${t.acertos}/${t.total}
+        partidas
+
+        ${
+          qualificada
+            ? " • frequência ≥ 80%"
+            : ""
+        }
+      </div>
+    </div>
+  `;
+}
+
+/* =========================================================
+   CARD DE EQUIPE NA ANÁLISE
+========================================================= */
+
+function cardAnaliseTime(
+  lado,
+  nome
+) {
+  const partidas =
+    filtrarPartidasHistoricas(
+      lado
+    );
+
+  const resumo =
+    resumoAmostraHistorica(
+      partidas
+    );
+
+  const tendencias =
+    gerarTendenciasHistoricas(
+      partidas
+    );
+
+  return `
+    <div
+      style="
+        padding:14px;
+        border-radius:15px;
+        border:1px solid rgba(255,255,255,.08);
+        background:rgba(255,255,255,.025);
+        margin-bottom:12px;
+      "
+    >
+      <div
+        style="
+          display:flex;
+          justify-content:space-between;
+          gap:10px;
+          align-items:center;
+        "
+      >
+        <div
+          style="
+            font-size:16px;
+            font-weight:950;
+          "
+        >
+          ${e(nome)}
+        </div>
+
+        <div
+          style="
+            font-size:10px;
+            opacity:.55;
+            font-weight:900;
+          "
+        >
+          ${resumo.quantidade}
+          JOGO(S)
+        </div>
+      </div>
+
+      ${
+        resumo.quantidade
+          ? `
+            <div
+              style="
+                margin-top:12px;
+                display:grid;
+                grid-template-columns:repeat(2,1fr);
+                gap:7px;
+              "
+            >
+              ${miniResumoAnalise(
+                "Gols",
+                resumo.totais.gols,
+                resumo.medias.gols
+              )}
+
+              ${miniResumoAnalise(
+                "Chutes",
+                resumo.totais.chutes,
+                resumo.medias.chutes
+              )}
+
+              ${miniResumoAnalise(
+                "No alvo",
+                resumo.totais.chutesGol,
+                resumo.medias.chutesGol
+              )}
+
+              ${miniResumoAnalise(
+                "Escanteios",
+                resumo.totais.escanteios,
+                resumo.medias.escanteios
+              )}
+
+              ${miniResumoAnalise(
+                "Faltas",
+                resumo.totais.faltas,
+                resumo.medias.faltas
+              )}
+
+              ${miniResumoAnalise(
+                "Amarelos",
+                resumo.totais.amarelos,
+                resumo.medias.amarelos
+              )}
+            </div>
+
+            <div
+              style="
+                margin-top:15px;
+                font-size:11px;
+                font-weight:950;
+                color:#2ee58b;
+              "
+            >
+              FREQUÊNCIA HISTÓRICA
+            </div>
+
+            ${
+              tendencias
+                .slice(0, 8)
+                .map(
+                  cardTendenciaHistorica
+                )
+                .join("")
+            }
+          `
+          : `
+            <div
+              style="
+                padding:18px 5px;
+                text-align:center;
+                opacity:.6;
+                font-size:12px;
+              "
+            >
+              Nenhuma partida encontrada
+              com estes filtros.
+            </div>
+          `
+      }
+    </div>
+  `;
+}
+
+function miniResumoAnalise(
+  titulo,
+  total,
+  mediaValor
+) {
+  return `
+    <div
+      style="
+        padding:10px;
+        border-radius:11px;
+        background:rgba(255,255,255,.035);
+      "
+    >
+      <div
+        style="
+          font-size:9px;
+          opacity:.5;
+          font-weight:900;
+          text-transform:uppercase;
         "
       >
         ${e(titulo)}
@@ -5157,470 +3767,1202 @@ function miniCardJogador(
 
       <div
         style="
-          margin-top:6px;
-          font-size:19px;
-          font-weight:950;
+          margin-top:5px;
+          display:flex;
+          justify-content:space-between;
+          gap:7px;
+          align-items:end;
         "
       >
-        ${n(mediaValor).toFixed(1)}
-      </div>
+        <div>
+          <strong
+            style="
+              font-size:17px;
+            "
+          >
+            ${n(total).toFixed(0)}
+          </strong>
 
-      <div
-        style="
-          margin-top:3px;
-          font-size:9px;
-          opacity:.5;
-        "
-      >
-        Total ${n(totalValor).toFixed(0)}
+          <div
+            style="
+              font-size:8px;
+              opacity:.45;
+            "
+          >
+            TOTAL
+          </div>
+        </div>
+
+        <div
+          style="
+            text-align:right;
+          "
+        >
+          <strong
+            style="
+              color:#2ee58b;
+            "
+          >
+            ${n(mediaValor).toFixed(1)}
+          </strong>
+
+          <div
+            style="
+              font-size:8px;
+              opacity:.45;
+            "
+          >
+            MÉDIA
+          </div>
+        </div>
       </div>
     </div>
   `;
 }
 
 /* =========================================================
-   FILTROS DO JOGADOR
+   CONTROLES DA ANÁLISE
 ========================================================= */
 
-function mudarFiltroJogadorQuantidade(q) {
-  filtroJogador.quantidade =
-    Number(q) === 5
-      ? 5
-      : 10;
-
-  renderPaginaJogador();
-}
-
-function mudarFiltroJogadorLocal(local) {
-  filtroJogador.local =
-    local;
-
-  renderPaginaJogador();
-}
-
-function mudarFiltroJogadorCampeonato(valor) {
-  filtroJogador.campeonato =
-    valor || "todos";
-
-  renderPaginaJogador();
-}
-
-function campeonatosJogador(id) {
-  const mapa =
-    new Map();
-
-  partidasComJogador(id)
-    .forEach(item => {
-      const p =
-        item.partida;
-
-      const ligaId =
-        idLigaHistorica(p);
-
-      const nome =
-        nomeLigaHistorica(p);
-
-      if (
-        ligaId != null &&
-        !mapa.has(
-          String(ligaId)
-        )
-      ) {
-        mapa.set(
-          String(ligaId),
-          {
-            id: ligaId,
-            nome
-          }
-        );
-      }
-    });
-
-  return [...mapa.values()];
-}
-
-function controlesJogador(id) {
+function controlesAnaliseHistorica() {
   const campeonatos =
-    campeonatosJogador(id);
+    campeonatosHistorico();
 
   return `
     <div
       style="
         display:flex;
-        flex-direction:column;
-        gap:9px;
+        gap:7px;
+        overflow-x:auto;
+        margin-bottom:9px;
       "
     >
-      <div
-        style="
-          display:flex;
-          gap:7px;
-          overflow-x:auto;
-        "
-      >
-        ${botao(
-          "Últimos 5",
-          "mudarFiltroJogadorQuantidade(5)",
-          filtroJogador.quantidade === 5
-        )}
+      ${botao(
+        "Últimas 5",
+        "mudarQuantidadeHistorico(5)",
+        filtroHistorico.quantidade === 5
+      )}
 
-        ${botao(
-          "Últimos 10",
-          "mudarFiltroJogadorQuantidade(10)",
-          filtroJogador.quantidade === 10
-        )}
-      </div>
-
-      <div
-        style="
-          display:flex;
-          gap:7px;
-          overflow-x:auto;
-        "
-      >
-        ${botao(
-          "Geral",
-          "mudarFiltroJogadorLocal('geral')",
-          filtroJogador.local === "geral"
-        )}
-
-        ${botao(
-          "Casa",
-          "mudarFiltroJogadorLocal('casa')",
-          filtroJogador.local === "casa"
-        )}
-
-        ${botao(
-          "Fora",
-          "mudarFiltroJogadorLocal('fora')",
-          filtroJogador.local === "fora"
-        )}
-      </div>
-
-      <select
-        onchange="mudarFiltroJogadorCampeonato(this.value)"
-        style="
-          width:100%;
-          border:1px solid rgba(255,255,255,.12);
-          border-radius:11px;
-          background:#101820;
-          color:#fff;
-          padding:11px;
-          font-weight:800;
-        "
-      >
-        <option value="todos">
-          Todos os campeonatos
-        </option>
-
-        ${
-          campeonatos
-            .map(c => `
-              <option
-                value="${e(c.id)}"
-                ${
-                  String(
-                    filtroJogador.campeonato
-                  ) ===
-                  String(c.id)
-                    ? "selected"
-                    : ""
-                }
-              >
-                ${e(c.nome)}
-              </option>
-            `)
-            .join("")
-        }
-      </select>
+      ${botao(
+        "Últimas 10",
+        "mudarQuantidadeHistorico(10)",
+        filtroHistorico.quantidade === 10
+      )}
     </div>
-  `;
-}
-  /* =========================================================
-   TENDÊNCIAS DO JOGADOR
-========================================================= */
 
-function gerarTendenciasJogador(lista) {
-  const itens = safeArray(lista);
+    <div
+      style="
+        display:flex;
+        gap:7px;
+        overflow-x:auto;
+        margin-bottom:10px;
+      "
+    >
+      ${botao(
+        "Geral",
+        "mudarLocalHistorico('geral')",
+        filtroHistorico.local ===
+          "geral"
+      )}
 
-  if (!itens.length) return [];
+      ${botao(
+        "Casa",
+        "mudarLocalHistorico('casa')",
+        filtroHistorico.local ===
+          "casa"
+      )}
 
-  const mercados = [
-    {
-      nome: "Chutes",
-      getter: x =>
-        estatisticaJogador(x.jogador).chutes,
-      linhas: [0.5, 1.5, 2.5, 3.5, 4.5]
-    },
-    {
-      nome: "Chutes no alvo",
-      getter: x =>
-        estatisticaJogador(x.jogador).chutesGol,
-      linhas: [0.5, 1.5, 2.5, 3.5]
-    },
-    {
-      nome: "Faltas cometidas",
-      getter: x =>
-        estatisticaJogador(x.jogador).faltasCometidas,
-      linhas: [0.5, 1.5, 2.5, 3.5]
-    },
-    {
-      nome: "Faltas sofridas",
-      getter: x =>
-        estatisticaJogador(x.jogador).faltasSofridas,
-      linhas: [0.5, 1.5, 2.5, 3.5]
-    },
-    {
-      nome: "Desarmes",
-      getter: x =>
-        estatisticaJogador(x.jogador).desarmes,
-      linhas: [0.5, 1.5, 2.5, 3.5, 4.5]
-    },
-    {
-      nome: "Passes-chave",
-      getter: x =>
-        estatisticaJogador(x.jogador).passesChave,
-      linhas: [0.5, 1.5, 2.5]
-    }
-  ];
+      ${botao(
+        "Fora",
+        "mudarLocalHistorico('fora')",
+        filtroHistorico.local ===
+          "fora"
+      )}
+    </div>
 
-  const saida = [];
+    <select
+      onchange="mudarCampeonatoHistorico(this.value)"
+      style="
+        width:100%;
+        border:1px solid rgba(255,255,255,.12);
+        border-radius:11px;
+        background:#101820;
+        color:#fff;
+        padding:11px;
+        font-weight:800;
+      "
+    >
+      <option
+        value="todos"
+        ${
+          filtroHistorico.campeonato ===
+          "todos"
+            ? "selected"
+            : ""
+        }
+      >
+        Todos os campeonatos
+      </option>
 
-  mercados.forEach(mercado => {
-    mercado.linhas.forEach(linha => {
-      const valores =
-        itens.map(mercado.getter);
-
-      const acertos =
-        valores.filter(
-          v => n(v) > linha
-        ).length;
-
-      const percentual =
-        pct(acertos, valores.length);
-
-      if (
-        percentual >=
-        CONFIG.frequenciaMinima
-      ) {
-        const mediaValor =
-          valores.reduce(
-            (a, b) => a + n(b),
-            0
-          ) / valores.length;
-
-        saida.push({
-          mercado: mercado.nome,
-          linha,
-          acertos,
-          total: valores.length,
-          percentual,
-          media: mediaValor
-        });
+      ${
+        campeonatos
+          .map(c => `
+            <option
+              value="${e(c.id)}"
+              ${
+                String(
+                  filtroHistorico.campeonato
+                ) ===
+                String(c.id)
+                  ? "selected"
+                  : ""
+              }
+            >
+              ${e(c.nome)}
+            </option>
+          `)
+          .join("")
       }
-    });
-  });
-
-  return saida.sort(
-    (a, b) =>
-      b.percentual - a.percentual ||
-      b.total - a.total ||
-      b.linha - a.linha
-  );
+    </select>
+  `;
 }
 
 /* =========================================================
-   JOGO A JOGO DO JOGADOR
+   RENDER DA ANÁLISE
 ========================================================= */
 
-function linhaPartidaJogador(item) {
-  const p = item.partida;
-  const j = item.jogador;
-  const s = estatisticaJogador(j);
+function renderAnaliseAutomatica() {
+  return `
+    ${painel(`
+      ${tituloSecao(
+        "Análise Profianalises",
+        "Filtros aplicados ao histórico real disponível."
+      )}
+
+      ${controlesAnaliseHistorica()}
+
+      <div
+        style="
+          margin-top:12px;
+          padding:10px;
+          border-radius:10px;
+          background:rgba(46,229,139,.045);
+          border:1px solid rgba(46,229,139,.12);
+          font-size:10px;
+          line-height:1.6;
+          opacity:.8;
+        "
+      >
+        Frequência histórica mostra
+        quantas vezes uma linha ocorreu
+        na amostra selecionada.
+        Ela não representa garantia
+        nem probabilidade futura.
+      </div>
+    `)}
+
+    ${cardAnaliseTime(
+      "casa",
+      partidaAtual?.home?.name ||
+      "Casa"
+    )}
+
+    ${cardAnaliseTime(
+      "fora",
+      partidaAtual?.away?.name ||
+      "Fora"
+    )}
+  `;
+      }
+/* =========================================================
+   ESCALAÇÕES
+========================================================= */
+
+function extrairEscalacoes() {
+  const fonte =
+    partidaAtual?.lineups;
+
+  if (Array.isArray(fonte)) {
+    return fonte;
+  }
+
+  if (Array.isArray(fonte?.response)) {
+    return fonte.response;
+  }
+
+  if (Array.isArray(fonte?.lineups)) {
+    return fonte.lineups;
+  }
+
+  return [];
+}
+
+function encontrarEscalacaoTime(
+  teamId
+) {
+  return extrairEscalacoes()
+    .find(item => {
+      const id =
+        item?.team?.id ||
+        item?.time?.id ||
+        item?.teamId;
+
+      return (
+        Number(id) ===
+        Number(teamId)
+      );
+    }) || null;
+}
+
+function extrairTitulares(
+  lineup
+) {
+  if (!lineup) return [];
+
+  const fontes = [
+    lineup.startXI,
+    lineup.startingXI,
+    lineup.titulares,
+    lineup.players
+  ];
+
+  for (const fonte of fontes) {
+    if (Array.isArray(fonte)) {
+      return fonte.map(item => {
+        const p =
+          item.player ||
+          item.jogador ||
+          item;
+
+        return {
+          id:
+            p?.id ||
+            item?.id,
+
+          nome:
+            p?.name ||
+            p?.nome ||
+            item?.name ||
+            item?.nome ||
+            "Jogador",
+
+          numero:
+            p?.number ??
+            p?.numero ??
+            item?.number ??
+            item?.numero ??
+            null,
+
+          posicao:
+            p?.pos ||
+            p?.position ||
+            p?.posicao ||
+            item?.pos ||
+            item?.position ||
+            "",
+
+          grid:
+            p?.grid ||
+            item?.grid ||
+            "",
+
+          foto:
+            p?.photo ||
+            p?.foto ||
+            ""
+        };
+      });
+    }
+  }
+
+  return [];
+}
+
+function extrairReservas(
+  lineup
+) {
+  if (!lineup) return [];
+
+  const fontes = [
+    lineup.substitutes,
+    lineup.reservas,
+    lineup.bench
+  ];
+
+  for (const fonte of fontes) {
+    if (Array.isArray(fonte)) {
+      return fonte.map(item => {
+        const p =
+          item.player ||
+          item.jogador ||
+          item;
+
+        return {
+          id:
+            p?.id ||
+            item?.id,
+
+          nome:
+            p?.name ||
+            p?.nome ||
+            item?.name ||
+            item?.nome ||
+            "Jogador",
+
+          numero:
+            p?.number ??
+            p?.numero ??
+            item?.number ??
+            item?.numero ??
+            null,
+
+          posicao:
+            p?.pos ||
+            p?.position ||
+            p?.posicao ||
+            item?.pos ||
+            item?.position ||
+            "",
+
+          foto:
+            p?.photo ||
+            p?.foto ||
+            ""
+        };
+      });
+    }
+  }
+
+  return [];
+}
+
+/* =========================================================
+   POSIÇÃO NO CAMPO
+========================================================= */
+
+function posicaoGridJogador(
+  jogador,
+  indice,
+  total
+) {
+  const grid =
+    String(
+      jogador?.grid || ""
+    );
+
+  const partes =
+    grid.split(":");
+
+  if (
+    partes.length === 2 &&
+    Number(partes[0]) &&
+    Number(partes[1])
+  ) {
+    const linha =
+      Number(partes[0]);
+
+    const coluna =
+      Number(partes[1]);
+
+    const linhas = 5;
+
+    const top =
+      Math.min(
+        88,
+        Math.max(
+          8,
+          8 +
+          ((linha - 1) /
+            Math.max(
+              1,
+              linhas - 1
+            )) *
+            78
+        )
+      );
+
+    let quantidadeLinha = 1;
+
+    const mesmaLinha =
+      total.filter
+        ? total.filter(
+            p =>
+              String(p.grid || "")
+                .split(":")[0] ===
+              String(linha)
+          )
+        : [];
+
+    if (mesmaLinha.length) {
+      quantidadeLinha =
+        mesmaLinha.length;
+    }
+
+    const left =
+      quantidadeLinha === 1
+        ? 50
+        : Math.min(
+            88,
+            Math.max(
+              12,
+              (
+                coluna /
+                (quantidadeLinha + 1)
+              ) *
+                100
+            )
+          );
+
+    return {
+      top,
+      left
+    };
+  }
+
+  const colunas = 4;
+
+  const linha =
+    Math.floor(
+      indice / colunas
+    );
+
+  const coluna =
+    indice % colunas;
+
+  return {
+    top:
+      15 +
+      linha * 29,
+
+    left:
+      15 +
+      coluna * 23
+  };
+}
+
+/* =========================================================
+   CAMPO VISUAL
+========================================================= */
+
+function campoEscalacao(
+  jogadores,
+  lado = "casa"
+) {
+  const lista =
+    safeArray(jogadores);
+
+  if (!lista.length) {
+    return `
+      <div
+        style="
+          padding:22px;
+          text-align:center;
+          opacity:.6;
+        "
+      >
+        Escalação ainda não disponível.
+      </div>
+    `;
+  }
 
   return `
     <div
       style="
-        padding:13px 0;
-        border-bottom:1px solid rgba(255,255,255,.07);
+        position:relative;
+        height:500px;
+        overflow:hidden;
+        border-radius:18px;
+        border:1px solid rgba(255,255,255,.12);
+        background:
+          linear-gradient(
+            rgba(0,0,0,.10),
+            rgba(0,0,0,.10)
+          ),
+          repeating-linear-gradient(
+            0deg,
+            rgba(46,229,139,.10) 0,
+            rgba(46,229,139,.10) 62px,
+            rgba(46,229,139,.06) 62px,
+            rgba(46,229,139,.06) 124px
+          );
       "
     >
+
       <div
         style="
-          display:flex;
-          justify-content:space-between;
-          gap:10px;
+          position:absolute;
+          left:50%;
+          top:0;
+          bottom:0;
+          width:1px;
+          background:rgba(255,255,255,.18);
+        "
+      ></div>
+
+      <div
+        style="
+          position:absolute;
+          width:110px;
+          height:110px;
+          border:1px solid rgba(255,255,255,.18);
+          border-radius:50%;
+          left:50%;
+          top:50%;
+          transform:translate(-50%,-50%);
+        "
+      ></div>
+
+      <div
+        style="
+          position:absolute;
+          left:50%;
+          top:50%;
+          width:5px;
+          height:5px;
+          background:rgba(255,255,255,.4);
+          border-radius:50%;
+          transform:translate(-50%,-50%);
+        "
+      ></div>
+
+      ${
+        lista
+          .map((p, i) => {
+            const pos =
+              posicaoGridJogador(
+                p,
+                i,
+                lista
+              );
+
+            const foto =
+              fotoJogador(p);
+
+            return `
+              <button
+                type="button"
+                onclick="abrirJogador(${Number(
+                  p.id || 0
+                )})"
+                style="
+                  position:absolute;
+                  top:${pos.top}%;
+                  left:${pos.left}%;
+                  transform:translate(-50%,-50%);
+                  width:72px;
+                  border:0;
+                  background:transparent;
+                  color:#fff;
+                  text-align:center;
+                  cursor:pointer;
+                "
+              >
+                <div
+                  style="
+                    position:relative;
+                    width:42px;
+                    height:42px;
+                    margin:auto;
+                    border-radius:50%;
+                    background:#101820;
+                    border:2px solid ${
+                      lado === "casa"
+                        ? "#2ee58b"
+                        : "rgba(255,255,255,.7)"
+                    };
+                    overflow:hidden;
+                  "
+                >
+                  ${
+                    foto
+                      ? `
+                        <img
+                          src="${e(foto)}"
+                          onerror="this.style.display='none'"
+                          style="
+                            width:100%;
+                            height:100%;
+                            object-fit:cover;
+                          "
+                        >
+                      `
+                      : ""
+                  }
+
+                  ${
+                    p.numero != null
+                      ? `
+                        <div
+                          style="
+                            position:absolute;
+                            right:-1px;
+                            bottom:-1px;
+                            min-width:15px;
+                            height:15px;
+                            border-radius:8px;
+                            padding:0 3px;
+                            background:#050b10;
+                            color:#2ee58b;
+                            font-size:8px;
+                            font-weight:950;
+                            line-height:15px;
+                          "
+                        >
+                          ${e(p.numero)}
+                        </div>
+                      `
+                      : ""
+                  }
+                </div>
+
+                <div
+                  style="
+                    margin-top:4px;
+                    font-size:9px;
+                    line-height:1.15;
+                    font-weight:950;
+                    text-shadow:0 1px 3px #000;
+                  "
+                >
+                  ${e(
+                    String(p.nome)
+                      .split(" ")
+                      .slice(-1)[0]
+                  )}
+                </div>
+              </button>
+            `;
+          })
+          .join("")
+      }
+    </div>
+  `;
+}
+
+/* =========================================================
+   LISTA DE RESERVAS
+========================================================= */
+
+function listaReservas(
+  reservas
+) {
+  if (!reservas.length) {
+    return `
+      <div
+        style="
+          padding:12px;
+          text-align:center;
+          opacity:.55;
+          font-size:11px;
         "
       >
-        <div>
-          <strong>
-            ${e(
-              p.adversario?.name ||
-              p.adversario ||
-              "Adversário"
-            )}
-          </strong>
+        Reservas não disponíveis.
+      </div>
+    `;
+  }
 
-          <div
-            style="
-              margin-top:3px;
-              font-size:10px;
-              opacity:.55;
-            "
-          >
-            ${e(dataCurta(p.data))}
-            • ${e(nomeLigaHistorica(p))}
-            • ${
-              partidaEhCasa(p)
-                ? "Casa"
-                : partidaEhFora(p)
-                  ? "Fora"
-                  : "Geral"
-            }
-          </div>
-        </div>
+  return `
+    <div
+      style="
+        display:grid;
+        gap:7px;
+      "
+    >
+      ${
+        reservas
+          .map(p => `
+            <button
+              onclick="abrirJogador(${Number(
+                p.id || 0
+              )})"
+              style="
+                display:flex;
+                align-items:center;
+                gap:9px;
+                width:100%;
+                padding:9px;
+                border:1px solid rgba(255,255,255,.07);
+                border-radius:10px;
+                background:rgba(255,255,255,.025);
+                color:#fff;
+                text-align:left;
+              "
+            >
+              <div
+                style="
+                  width:27px;
+                  text-align:center;
+                  color:#2ee58b;
+                  font-weight:950;
+                "
+              >
+                ${e(p.numero ?? "-")}
+              </div>
+
+              <div style="flex:1">
+                <div style="font-weight:850">
+                  ${e(p.nome)}
+                </div>
+
+                <div
+                  style="
+                    margin-top:2px;
+                    font-size:9px;
+                    opacity:.5;
+                  "
+                >
+                  ${e(p.posicao || "")}
+                </div>
+              </div>
+            </button>
+          `)
+          .join("")
+      }
+    </div>
+  `;
+}
+
+/* =========================================================
+   RENDER ESCALAÇÕES
+========================================================= */
+
+function renderEscalacoes() {
+  const casa =
+    encontrarEscalacaoTime(
+      partidaAtual?.home?.id
+    );
+
+  const fora =
+    encontrarEscalacaoTime(
+      partidaAtual?.away?.id
+    );
+
+  if (!casa && !fora) {
+    return painel(`
+      ${tituloSecao(
+        "Escalações",
+        "As escalações dependem da publicação oficial e da cobertura da competição."
+      )}
+
+      <div
+        style="
+          padding:20px;
+          text-align:center;
+          background:rgba(255,255,255,.03);
+          border-radius:13px;
+        "
+      >
+        <strong>
+          Escalações ainda não disponíveis
+        </strong>
 
         <div
           style="
-            font-size:12px;
-            text-align:right;
+            margin-top:7px;
+            font-size:11px;
+            opacity:.55;
+            line-height:1.5;
           "
         >
-          <strong>
-            ${s.minutos}'
-          </strong>
-
-          <div
-            style="
-              margin-top:3px;
-              opacity:.55;
-              font-size:10px;
-            "
-          >
-            Nota ${
-              s.nota
-                ? s.nota.toFixed(1)
-                : "-"
-            }
-          </div>
+          Quando fornecidas pela API, normalmente aparecem
+          próximo do início da partida.
         </div>
       </div>
+    `);
+  }
+
+  const titularesCasa =
+    extrairTitulares(casa);
+
+  const titularesFora =
+    extrairTitulares(fora);
+
+  const reservasCasa =
+    extrairReservas(casa);
+
+  const reservasFora =
+    extrairReservas(fora);
+
+  return `
+    ${painel(`
+      ${tituloSecao(
+        "Escalações",
+        "Formação e jogadores disponíveis para a partida."
+      )}
 
       <div
         style="
           display:grid;
-          grid-template-columns:repeat(3,minmax(0,1fr));
-          gap:7px;
-          margin-top:11px;
+          grid-template-columns:1fr 1fr;
+          gap:10px;
+          margin-bottom:12px;
         "
       >
-        ${miniValorJogo("Chutes", s.chutes)}
-        ${miniValorJogo("No alvo", s.chutesGol)}
-        ${miniValorJogo("Desarmes", s.desarmes)}
+        <div
+          style="
+            padding:11px;
+            border-radius:11px;
+            background:rgba(46,229,139,.06);
+          "
+        >
+          <strong>
+            ${e(partidaAtual?.home?.name)}
+          </strong>
 
-        ${miniValorJogo(
-          "Faltas feitas",
-          s.faltasCometidas
-        )}
+          <div
+            style="
+              margin-top:3px;
+              font-size:10px;
+              opacity:.55;
+            "
+          >
+            ${e(
+              casa?.formation ||
+              casa?.formacao ||
+              "-"
+            )}
+          </div>
+        </div>
 
-        ${miniValorJogo(
-          "Faltas sofridas",
-          s.faltasSofridas
-        )}
+        <div
+          style="
+            padding:11px;
+            border-radius:11px;
+            background:rgba(255,255,255,.035);
+          "
+        >
+          <strong>
+            ${e(partidaAtual?.away?.name)}
+          </strong>
 
-        ${miniValorJogo(
-          "Passes-chave",
-          s.passesChave
-        )}
-
-        ${miniValorJogo("Passes", s.passes)}
-        ${miniValorJogo("Gols", s.gols)}
-        ${miniValorJogo("Assist.", s.assistencias)}
+          <div
+            style="
+              margin-top:3px;
+              font-size:10px;
+              opacity:.55;
+            "
+          >
+            ${e(
+              fora?.formation ||
+              fora?.formacao ||
+              "-"
+            )}
+          </div>
+        </div>
       </div>
-    </div>
-  `;
-}
+    `)}
 
-function miniValorJogo(nome, v) {
-  return `
-    <div
-      style="
-        padding:8px 5px;
-        border-radius:9px;
-        background:rgba(255,255,255,.035);
-        text-align:center;
-      "
-    >
-      <strong>
-        ${n(v).toFixed(0)}
-      </strong>
+    ${painel(`
+      ${tituloSecao(
+        partidaAtual?.home?.name ||
+        "Casa",
+        casa?.formation
+          ? `Formação ${casa.formation}`
+          : "Titulares"
+      )}
+
+      ${campoEscalacao(
+        titularesCasa,
+        "casa"
+      )}
+    `)}
+
+    ${painel(`
+      ${tituloSecao(
+        partidaAtual?.away?.name ||
+        "Fora",
+        fora?.formation
+          ? `Formação ${fora.formation}`
+          : "Titulares"
+      )}
+
+      ${campoEscalacao(
+        titularesFora,
+        "fora"
+      )}
+    `)}
+
+    ${painel(`
+      ${tituloSecao(
+        "Banco de reservas",
+        "Jogadores relacionados"
+      )}
 
       <div
         style="
-          margin-top:2px;
-          font-size:9px;
-          opacity:.55;
+          display:grid;
+          grid-template-columns:1fr 1fr;
+          gap:10px;
         "
       >
-        ${e(nome)}
+        <div>
+          <div
+            style="
+              margin-bottom:8px;
+              font-size:11px;
+              font-weight:950;
+              color:#2ee58b;
+            "
+          >
+            ${e(partidaAtual?.home?.name)}
+          </div>
+
+          ${listaReservas(reservasCasa)}
+        </div>
+
+        <div>
+          <div
+            style="
+              margin-bottom:8px;
+              font-size:11px;
+              font-weight:950;
+            "
+          >
+            ${e(partidaAtual?.away?.name)}
+          </div>
+
+          ${listaReservas(reservasFora)}
+        </div>
       </div>
-    </div>
+    `)}
   `;
 }
 
 /* =========================================================
-   TELA COMPLETA DO JOGADOR
+   JOGADORES DA PARTIDA
 ========================================================= */
 
-function renderPaginaJogador() {
-  const p = jogadorSelecionado;
+function normalizarJogadorPartida(
+  p = {},
+  team = {}
+) {
+  const jogador =
+    p.player ||
+    p.jogador ||
+    p;
 
-  if (!p) {
-    renderPaginaPartida();
-    return;
-  }
+  const stats =
+    Array.isArray(p.statistics)
+      ? p.statistics[0] || {}
+      : p.statistics ||
+        p.stats ||
+        {};
 
-  const partidas =
-    filtrarPartidasJogador(p.id);
+  return {
+    id:
+      jogador.id ||
+      p.id,
 
-  const resumo =
-    resumoJogador(partidas);
+    nome:
+      jogador.name ||
+      jogador.nome ||
+      p.name ||
+      p.nome ||
+      "Jogador",
 
-  const tendencias =
-    gerarTendenciasJogador(partidas);
+    foto:
+      jogador.photo ||
+      jogador.foto ||
+      p.photo ||
+      p.foto ||
+      "",
 
+    teamId:
+      team.id ||
+      p.teamId,
+
+    teamName:
+      team.name ||
+      p.teamName ||
+      "",
+
+    numero:
+      stats.games?.number ??
+      stats.numero ??
+      p.numero ??
+      null,
+
+    posicao:
+      stats.games?.position ||
+      stats.games?.pos ||
+      stats.posicao ||
+      p.posicao ||
+      "",
+
+    minutos:
+      n(
+        stats.games?.minutes ??
+        stats.minutos ??
+        p.minutos
+      ),
+
+    nota:
+      Number(
+        stats.games?.rating ??
+        stats.nota ??
+        p.nota ??
+        0
+      ),
+
+    chutes:
+      n(
+        stats.shots?.total ??
+        stats.chutes ??
+        p.chutes
+      ),
+
+    chutesGol:
+      n(
+        stats.shots?.on ??
+        stats.chutesGol ??
+        p.chutesGol
+      ),
+
+    gols:
+      n(
+        stats.goals?.total ??
+        stats.gols ??
+        p.gols
+      ),
+
+    assistencias:
+      n(
+        stats.goals?.assists ??
+        stats.assistencias ??
+        p.assistencias
+      ),
+
+    passes:
+      n(
+        stats.passes?.total ??
+        stats.passes ??
+        p.passes
+      ),
+
+    passesChave:
+      n(
+        stats.passes?.key ??
+        stats.passesChave ??
+        p.passesChave
+      ),
+
+    desarmes:
+      n(
+        stats.tackles?.total ??
+        stats.desarmes ??
+        p.desarmes
+      ),
+
+    faltasCometidas:
+      n(
+        stats.fouls?.committed ??
+        stats.faltasCometidas ??
+        p.faltasCometidas
+      ),
+
+    faltasSofridas:
+      n(
+        stats.fouls?.drawn ??
+        stats.faltasSofridas ??
+        p.faltasSofridas
+      ),
+
+    amarelos:
+      n(
+        stats.cards?.yellow ??
+        stats.amarelos ??
+        p.amarelos
+      ),
+
+    vermelhos:
+      n(
+        stats.cards?.red ??
+        stats.vermelhos ??
+        p.vermelhos
+      )
+  };
+}
+
+function extrairJogadoresPartida() {
+  const resultado = [];
+
+  safeArray(
+    partidaAtual?.jogadores
+  ).forEach(bloco => {
+    const team =
+      bloco.team ||
+      bloco.time ||
+      {};
+
+    const players =
+      bloco.players ||
+      bloco.jogadores;
+
+    if (Array.isArray(players)) {
+      players.forEach(p => {
+        resultado.push(
+          normalizarJogadorPartida(
+            p,
+            team
+          )
+        );
+      });
+    } else {
+      resultado.push(
+        normalizarJogadorPartida(
+          bloco,
+          team
+        )
+      );
+    }
+  });
+
+  return resultado.filter(
+    p => p.id || p.nome
+  );
+}
+
+/* =========================================================
+   CARD JOGADOR
+========================================================= */
+
+function cardJogadorPartida(
+  p
+) {
   const foto =
     fotoJogador(p);
 
-  document.body.innerHTML = `
-    <main
+  return `
+    <button
+      onclick="abrirJogador(${Number(
+        p.id || 0
+      )})"
       style="
-        width:min(100% - 20px,800px);
-        margin:auto;
-        padding:12px 0 30px;
+        width:100%;
+        padding:11px;
+        border:1px solid rgba(255,255,255,.07);
+        border-radius:12px;
+        background:rgba(255,255,255,.025);
+        color:#fff;
+        text-align:left;
+        margin-bottom:7px;
       "
     >
-      <button
-        onclick="renderPaginaPartida()"
+      <div
         style="
-          border:0;
-          padding:11px 14px;
-          border-radius:11px;
-          background:rgba(255,255,255,.07);
-          color:#fff;
-          font-weight:900;
-          margin-bottom:12px;
+          display:flex;
+          align-items:center;
+          gap:10px;
         "
       >
-        ← Voltar para partida
-      </button>
-
-      ${painel(`
         <div
           style="
-            display:flex;
-            align-items:center;
-            gap:14px;
+            width:42px;
+            height:42px;
+            border-radius:50%;
+            overflow:hidden;
+            background:rgba(255,255,255,.07);
+            flex:0 0 auto;
           "
         >
           ${
@@ -5630,1328 +4972,1455 @@ function renderPaginaJogador() {
                   src="${e(foto)}"
                   onerror="this.style.display='none'"
                   style="
-                    width:72px;
-                    height:72px;
-                    border-radius:50%;
+                    width:100%;
+                    height:100%;
                     object-fit:cover;
-                    background:rgba(255,255,255,.05);
                   "
                 >
               `
               : ""
           }
-
-          <div>
-            <div
-              style="
-                font-size:21px;
-                font-weight:950;
-              "
-            >
-              ${e(p.nome)}
-            </div>
-
-            <div
-              style="
-                margin-top:5px;
-                font-size:12px;
-                opacity:.65;
-              "
-            >
-              ${
-                p.numero !== "-"
-                  ? `Camisa ${e(p.numero)} • `
-                  : ""
-              }
-              ${e(p.posicao || "Jogador")}
-            </div>
-
-            <div
-              style="
-                margin-top:5px;
-                color:#2ee58b;
-                font-size:11px;
-                font-weight:900;
-              "
-            >
-              ANÁLISE INDIVIDUAL
-            </div>
-          </div>
         </div>
-      `)}
-
-      ${painel(`
-        ${tituloSecao(
-          "Filtros",
-          "Altere a amostra da análise individual."
-        )}
-
-        ${controlesJogador(p.id)}
-      `)}
-
-      ${painel(`
-        ${tituloSecao(
-          "Médias por partida",
-          `${resumo.quantidade} partida(s) encontradas`
-        )}
 
         <div
           style="
-            display:grid;
-            grid-template-columns:repeat(2,minmax(0,1fr));
-            gap:8px;
+            min-width:0;
+            flex:1;
           "
         >
-          ${miniCardJogador(
-            "Chutes",
-            resumo.medias.chutes,
-            resumo.total.chutes
-          )}
-
-          ${miniCardJogador(
-            "Chutes no alvo",
-            resumo.medias.chutesGol,
-            resumo.total.chutesGol
-          )}
-
-          ${miniCardJogador(
-            "Faltas cometidas",
-            resumo.medias.faltasCometidas,
-            resumo.total.faltasCometidas
-          )}
-
-          ${miniCardJogador(
-            "Faltas sofridas",
-            resumo.medias.faltasSofridas,
-            resumo.total.faltasSofridas
-          )}
-
-          ${miniCardJogador(
-            "Desarmes",
-            resumo.medias.desarmes,
-            resumo.total.desarmes
-          )}
-
-          ${miniCardJogador(
-            "Passes",
-            resumo.medias.passes,
-            resumo.total.passes
-          )}
-
-          ${miniCardJogador(
-            "Passes-chave",
-            resumo.medias.passesChave,
-            resumo.total.passesChave
-          )}
-
-          ${miniCardJogador(
-            "Minutos",
-            resumo.medias.minutos,
-            resumo.total.minutos
-          )}
-
-          ${miniCardJogador(
-            "Gols",
-            resumo.medias.gols,
-            resumo.total.gols
-          )}
-
-          ${miniCardJogador(
-            "Assistências",
-            resumo.medias.assistencias,
-            resumo.total.assistencias
-          )}
-
-          ${miniCardJogador(
-            "Amarelos",
-            resumo.medias.amarelos,
-            resumo.total.amarelos
-          )}
-
-          ${miniCardJogador(
-            "Nota",
-            resumo.medias.nota,
-            resumo.total.nota
-          )}
-        </div>
-      `)}
-
-      ${painel(`
-        ${tituloSecao(
-          "Tendências do jogador",
-          `Somente frequências históricas ≥ ${CONFIG.frequenciaMinima}%`
-        )}
-
-        ${
-          tendencias.length
-            ? tendencias
-                .slice(0, 15)
-                .map(t => `
-                  <div
-                    style="
-                      padding:11px 0;
-                      border-bottom:1px solid rgba(255,255,255,.07);
-                    "
-                  >
-                    <div
-                      style="
-                        display:flex;
-                        justify-content:space-between;
-                        gap:10px;
-                      "
-                    >
-                      <strong>
-                        ${e(t.mercado)}
-                        • Mais de ${e(t.linha)}
-                      </strong>
-
-                      <strong style="color:#2ee58b">
-                        ${t.percentual}%
-                      </strong>
-                    </div>
-
-                    <div
-                      style="
-                        margin-top:4px;
-                        font-size:11px;
-                        opacity:.6;
-                      "
-                    >
-                      ${t.acertos}/${t.total}
-                      partidas • média
-                      ${n(t.media).toFixed(1)}
-                    </div>
-                  </div>
-                `)
-                .join("")
-            : `
-              <div
-                style="
-                  padding:16px;
-                  text-align:center;
-                  opacity:.65;
-                "
-              >
-                Nenhuma tendência ≥
-                ${CONFIG.frequenciaMinima}%
-                nesta amostra.
-              </div>
-            `
-        }
-
-        <div
-          style="
-            margin-top:12px;
-            font-size:10px;
-            opacity:.5;
-            line-height:1.5;
-          "
-        >
-          Frequência histórica não é garantia de que
-          o mesmo evento ocorrerá na próxima partida.
-        </div>
-      `)}
-
-      ${painel(`
-        ${tituloSecao(
-          "Jogo a jogo",
-          "Aqui conseguimos ver se a média é realmente regular."
-        )}
-
-        ${
-          partidas.length
-            ? partidas
-                .map(linhaPartidaJogador)
-                .join("")
-            : `
-              <div
-                style="
-                  padding:18px;
-                  text-align:center;
-                  opacity:.65;
-                "
-              >
-                Nenhum jogo encontrado com estes filtros.
-              </div>
-            `
-        }
-      `)}
-    </main>
-  `;
-}
-  /* =========================================================
-   ABA JOGADORES — RANKINGS
-========================================================= */
-
-let filtroRankingJogadores = {
-  lado: "casa",
-  quantidade: 10,
-  criterio: "chutes"
-};
-
-const CRITERIOS_RANKING = {
-  chutes: {
-    nome: "Chutes",
-    campo: "chutes"
-  },
-
-  chutesGol: {
-    nome: "No alvo",
-    campo: "chutesGol"
-  },
-
-  faltasCometidas: {
-    nome: "Faltas cometidas",
-    campo: "faltasCometidas"
-  },
-
-  faltasSofridas: {
-    nome: "Faltas sofridas",
-    campo: "faltasSofridas"
-  },
-
-  desarmes: {
-    nome: "Desarmes",
-    campo: "desarmes"
-  },
-
-  passes: {
-    nome: "Passes",
-    campo: "passes"
-  },
-
-  passesChave: {
-    nome: "Passes-chave",
-    campo: "passesChave"
-  },
-
-  gols: {
-    nome: "Gols",
-    campo: "gols"
-  },
-
-  assistencias: {
-    nome: "Assistências",
-    campo: "assistencias"
-  },
-
-  minutos: {
-    nome: "Minutos",
-    campo: "minutos"
-  },
-
-  nota: {
-    nome: "Avaliação",
-    campo: "nota"
-  }
-};
-
-function mudarRankingLado(lado) {
-  filtroRankingJogadores.lado =
-    lado;
-
-  renderPaginaPartida();
-}
-
-function mudarRankingQuantidade(qtd) {
-  filtroRankingJogadores.quantidade =
-    Number(qtd) === 5
-      ? 5
-      : 10;
-
-  renderPaginaPartida();
-}
-
-function mudarRankingCriterio(criterio) {
-  if (
-    CRITERIOS_RANKING[criterio]
-  ) {
-    filtroRankingJogadores.criterio =
-      criterio;
-  }
-
-  renderPaginaPartida();
-}
-
-/* =========================================================
-   AGREGA JOGADORES JOGO A JOGO
-========================================================= */
-
-function jogadoresAgregadosDoLado(lado) {
-  const quantidade =
-    filtroRankingJogadores.quantidade;
-
-  const partidas =
-    partidasHistoricoLado(
-      lado,
-      quantidade
-    );
-
-  const mapa =
-    new Map();
-
-  partidas.forEach(partida => {
-    safeArray(
-      partida.jogadores
-    ).forEach(j => {
-
-      const id =
-        j.id;
-
-      if (!id) return;
-
-      if (!mapa.has(String(id))) {
-        mapa.set(
-          String(id),
-          {
-            id,
-
-            nome:
-              j.nome ||
-              j.name ||
-              "Jogador",
-
-            foto:
-              j.foto ||
-              j.photo ||
-              `${API}/logo/player/${id}`,
-
-            numero:
-              j.numero ??
-              j.number ??
-              "-",
-
-            posicao:
-              j.posicao ||
-              j.position ||
-              "",
-
-            partidas: 0,
-
-            total: {
-              minutos: 0,
-              nota: 0,
-              chutes: 0,
-              chutesGol: 0,
-              gols: 0,
-              assistencias: 0,
-              passes: 0,
-              passesChave: 0,
-              faltasCometidas: 0,
-              faltasSofridas: 0,
-              desarmes: 0,
-              amarelos: 0,
-              vermelhos: 0
-            }
-          }
-        );
-      }
-
-      const item =
-        mapa.get(String(id));
-
-      const s =
-        estatisticaJogador(j);
-
-      item.partidas++;
-
-      Object.keys(item.total)
-        .forEach(campo => {
-          item.total[campo] +=
-            n(s[campo]);
-        });
-
-      if (
-        item.numero === "-" &&
-        j.numero != null
-      ) {
-        item.numero =
-          j.numero;
-      }
-    });
-  });
-
-  return [...mapa.values()]
-    .map(j => {
-      const medias = {};
-
-      Object.keys(j.total)
-        .forEach(campo => {
-          medias[campo] =
-            j.partidas
-              ? j.total[campo] /
-                j.partidas
-              : 0;
-        });
-
-      return {
-        ...j,
-        medias
-      };
-    });
-}
-
-/* =========================================================
-   CARD DO RANKING
-========================================================= */
-
-function cardRankingJogador(
-  jogador,
-  posicao
-) {
-  const criterio =
-    CRITERIOS_RANKING[
-      filtroRankingJogadores.criterio
-    ];
-
-  const campo =
-    criterio.campo;
-
-  const mediaValor =
-    n(
-      jogador.medias?.[campo]
-    );
-
-  const totalValor =
-    n(
-      jogador.total?.[campo]
-    );
-
-  const foto =
-    fotoJogador(jogador);
-
-  return `
-    <div
-      onclick="abrirJogador(${Number(jogador.id)})"
-      style="
-        position:relative;
-        padding:13px;
-        border:1px solid rgba(255,255,255,.08);
-        border-radius:14px;
-        background:rgba(255,255,255,.03);
-        cursor:pointer;
-      "
-    >
-
-      <div
-        style="
-          position:absolute;
-          top:10px;
-          left:10px;
-          width:32px;
-          height:32px;
-          border-radius:10px;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          background:rgba(46,229,139,.12);
-          color:#2ee58b;
-          font-weight:950;
-        "
-      >
-        ${posicao}
-      </div>
-
-      <div
-        style="
-          display:grid;
-          grid-template-columns:52px 1fr;
-          gap:10px;
-          align-items:center;
-          margin-left:42px;
-        "
-      >
-        ${
-          foto
-            ? `
-              <img
-                src="${e(foto)}"
-                onerror="this.style.display='none'"
-                style="
-                  width:52px;
-                  height:52px;
-                  border-radius:50%;
-                  object-fit:cover;
-                  background:rgba(255,255,255,.05);
-                "
-              >
-            `
-            : `
-              <div
-                style="
-                  width:52px;
-                  height:52px;
-                  border-radius:50%;
-                  display:flex;
-                  align-items:center;
-                  justify-content:center;
-                  background:rgba(255,255,255,.06);
-                  font-weight:950;
-                "
-              >
-                ${e(jogador.numero)}
-              </div>
-            `
-        }
-
-        <div style="min-width:0">
-
           <div
             style="
+              font-size:13px;
               font-weight:950;
-              white-space:nowrap;
               overflow:hidden;
-              text-overflow:ellipsis;
+              white-space:nowrap;
+                              
+                    text-overflow:ellipsis;
             "
           >
-            ${e(jogador.nome)}
+            ${
+              p.numero != null
+                ? `${e(p.numero)}. `
+                : ""
+            }
+            ${e(p.nome)}
           </div>
-
-          ${
-            jogador.numero !== "-"
-              ? `
-                <div
-                  style="
-                    margin-top:2px;
-                    font-size:10px;
-                    opacity:.6;
-                  "
-                >
-                  Camisa ${e(jogador.numero)}
-                </div>
-              `
-              : ""
-          }
 
           <div
             style="
               margin-top:3px;
-              font-size:10px;
-              opacity:.55;
+              font-size:9px;
+              opacity:.5;
             "
           >
-            ${jogador.partidas}
-            partida(s)
+            ${e(p.posicao || "-")}
+            • ${p.minutos || 0} min
           </div>
-
         </div>
+
+        ${
+          p.nota
+            ? `
+              <div
+                style="
+                  min-width:34px;
+                  padding:6px;
+                  border-radius:8px;
+                  background:rgba(46,229,139,.09);
+                  color:#2ee58b;
+                  text-align:center;
+                  font-size:12px;
+                  font-weight:950;
+                "
+              >
+                ${p.nota.toFixed(1)}
+              </div>
+            `
+            : ""
+        }
+      </div>
+
+      <div
+        style="
+          margin-top:10px;
+          display:grid;
+          grid-template-columns:repeat(4,1fr);
+          gap:5px;
+          text-align:center;
+        "
+      >
+        <div>
+          <strong>${p.chutes}</strong>
+          <div style="font-size:8px;opacity:.45">
+            CHUTES
+          </div>
+        </div>
+
+        <div>
+          <strong>${p.chutesGol}</strong>
+          <div style="font-size:8px;opacity:.45">
+            NO ALVO
+          </div>
+        </div>
+
+        <div>
+          <strong>${p.faltasCometidas}</strong>
+          <div style="font-size:8px;opacity:.45">
+            FALTAS
+          </div>
+        </div>
+
+        <div>
+          <strong>${p.desarmes}</strong>
+          <div style="font-size:8px;opacity:.45">
+            DESARMES
+          </div>
+        </div>
+      </div>
+    </button>
+  `;
+}
+
+/* =========================================================
+   RANKING DE JOGADORES
+========================================================= */
+
+let rankingJogadoresCampo =
+  "chutes";
+
+function mudarRankingJogadores(
+  campo
+) {
+  const permitidos = [
+    "chutes",
+    "chutesGol",
+    "faltasCometidas",
+    "faltasSofridas",
+    "desarmes",
+    "passes",
+    "passesChave"
+  ];
+
+  if (
+    permitidos.includes(campo)
+  ) {
+    rankingJogadoresCampo =
+      campo;
+  }
+
+  renderPaginaPartida();
+}
+
+function nomeCampoRanking(
+  campo
+) {
+  const mapa = {
+    chutes: "Chutes",
+    chutesGol: "No alvo",
+    faltasCometidas: "Faltas",
+    faltasSofridas: "Faltas sofridas",
+    desarmes: "Desarmes",
+    passes: "Passes",
+    passesChave: "Passes-chave"
+  };
+
+  return mapa[campo] || campo;
+}
+
+function rankingTime(
+  jogadores,
+  teamId
+) {
+  return jogadores
+    .filter(
+      p =>
+        Number(p.teamId) ===
+        Number(teamId)
+    )
+    .sort(
+      (a, b) =>
+        n(
+          b[
+            rankingJogadoresCampo
+          ]
+        ) -
+        n(
+          a[
+            rankingJogadoresCampo
+          ]
+        )
+    )
+    .slice(0, 8);
+}
+
+function colunaRanking(
+  jogadores,
+  team
+) {
+  const ranking =
+    rankingTime(
+      jogadores,
+      team?.id
+    );
+
+  return `
+    <div>
+      <div
+        style="
+          margin-bottom:8px;
+          font-size:11px;
+          font-weight:950;
+        "
+      >
+        ${e(team?.name || "-")}
+      </div>
+
+      ${
+        ranking.length
+          ? ranking
+              .map((p, i) => `
+                <button
+                  onclick="abrirJogador(${Number(
+                    p.id || 0
+                  )})"
+                  style="
+                    width:100%;
+                    display:grid;
+                    grid-template-columns:22px 1fr auto;
+                    gap:7px;
+                    align-items:center;
+                    padding:8px 5px;
+                    border:0;
+                    border-bottom:1px solid rgba(255,255,255,.06);
+                    background:transparent;
+                    color:#fff;
+                    text-align:left;
+                  "
+                >
+                  <span
+                    style="
+                      color:${
+                        i === 0
+                          ? "#2ee58b"
+                          : "rgba(255,255,255,.4)"
+                      };
+                      font-weight:950;
+                    "
+                  >
+                    ${i + 1}
+                  </span>
+
+                  <span
+                    style="
+                      overflow:hidden;
+                      white-space:nowrap;
+                      text-overflow:ellipsis;
+                      font-size:11px;
+                      font-weight:800;
+                    "
+                  >
+                    ${e(p.nome)}
+                  </span>
+
+                  <strong
+                    style="
+                      color:#2ee58b;
+                    "
+                  >
+                    ${n(
+                      p[
+                        rankingJogadoresCampo
+                      ]
+                    )}
+                  </strong>
+                </button>
+              `)
+              .join("")
+          : `
+            <div
+              style="
+                padding:15px 0;
+                opacity:.5;
+                font-size:11px;
+              "
+            >
+              Sem dados.
+            </div>
+          `
+      }
+    </div>
+  `;
+}
+
+/* =========================================================
+   RENDER JOGADORES
+========================================================= */
+
+function renderJogadores() {
+  const jogadores =
+    extrairJogadoresPartida();
+
+  const casa =
+    jogadores.filter(
+      p =>
+        Number(p.teamId) ===
+        Number(
+          partidaAtual?.home?.id
+        )
+    );
+
+  const fora =
+    jogadores.filter(
+      p =>
+        Number(p.teamId) ===
+        Number(
+          partidaAtual?.away?.id
+        )
+    );
+
+  return `
+    ${painel(`
+      ${tituloSecao(
+        "Ranking de jogadores",
+        "Compare os líderes de cada equipe na partida."
+      )}
+
+      <div
+        style="
+          display:flex;
+          gap:7px;
+          overflow-x:auto;
+          margin-bottom:15px;
+        "
+      >
+        ${botao(
+          "Chutes",
+          "mudarRankingJogadores('chutes')",
+          rankingJogadoresCampo ===
+            "chutes"
+        )}
+
+        ${botao(
+          "No alvo",
+          "mudarRankingJogadores('chutesGol')",
+          rankingJogadoresCampo ===
+            "chutesGol"
+        )}
+
+        ${botao(
+          "Faltas",
+          "mudarRankingJogadores('faltasCometidas')",
+          rankingJogadoresCampo ===
+            "faltasCometidas"
+        )}
+
+        ${botao(
+          "Desarmes",
+          "mudarRankingJogadores('desarmes')",
+          rankingJogadoresCampo ===
+            "desarmes"
+        )}
+
+        ${botao(
+          "Passes",
+          "mudarRankingJogadores('passes')",
+          rankingJogadoresCampo ===
+            "passes"
+        )}
+      </div>
+
+      <div
+        style="
+          padding:9px 10px;
+          border-radius:10px;
+          background:rgba(46,229,139,.045);
+          font-size:10px;
+          margin-bottom:12px;
+        "
+      >
+        Ordenado por:
+        <strong style="color:#2ee58b">
+          ${e(
+            nomeCampoRanking(
+              rankingJogadoresCampo
+            )
+          )}
+        </strong>
       </div>
 
       <div
         style="
           display:grid;
           grid-template-columns:1fr 1fr;
-          gap:7px;
-          margin-top:12px;
+          gap:12px;
         "
       >
-
-        <div
-          style="
-            padding:9px;
-            border-radius:10px;
-            background:rgba(46,229,139,.07);
-            text-align:center;
-          "
-        >
-          <div
-            style="
-              font-size:9px;
-              opacity:.6;
-            "
-          >
-            MÉDIA
-          </div>
-
-          <strong
-            style="
-              display:block;
-              margin-top:4px;
-              color:#2ee58b;
-              font-size:18px;
-            "
-          >
-            ${mediaValor.toFixed(1)}
-          </strong>
-        </div>
-
-        <div
-          style="
-            padding:9px;
-            border-radius:10px;
-            background:rgba(255,255,255,.04);
-            text-align:center;
-          "
-        >
-          <div
-            style="
-              font-size:9px;
-              opacity:.6;
-            "
-          >
-            TOTAL
-          </div>
-
-          <strong
-            style="
-              display:block;
-              margin-top:4px;
-              font-size:18px;
-            "
-          >
-            ${totalValor.toFixed(
-              campo === "nota"
-                ? 1
-                : 0
-            )}
-          </strong>
-        </div>
-
-      </div>
-
-      <div
-        style="
-          margin-top:9px;
-          text-align:right;
-          color:#2ee58b;
-          font-size:11px;
-          font-weight:900;
-        "
-      >
-        Ver análise ›
-      </div>
-
-    </div>
-  `;
-}
-
-/* =========================================================
-   RANKING ORDENADO
-========================================================= */
-
-function rankingJogadoresAtual() {
-  const jogadores =
-    jogadoresAgregadosDoLado(
-      filtroRankingJogadores.lado
-    );
-
-  const criterio =
-    CRITERIOS_RANKING[
-      filtroRankingJogadores.criterio
-    ];
-
-  return jogadores.sort(
-    (a, b) =>
-      n(
-        b.medias?.[
-          criterio.campo
-        ]
-      ) -
-      n(
-        a.medias?.[
-          criterio.campo
-        ]
-      )
-  );
-}
-
-/* =========================================================
-   ABA JOGADORES
-========================================================= */
-
-function renderJogadoresPartida() {
-  const jogadores =
-    rankingJogadoresAtual();
-
-  const nomeTime =
-    filtroRankingJogadores.lado ===
-    "casa"
-      ? partidaAtual.home.name
-      : partidaAtual.away.name;
-
-  return `
-    ${painel(`
-      ${tituloSecao(
-        "Análise dos jogadores",
-        "Ranking por média na amostra selecionada"
-      )}
-
-      <div
-        style="
-          display:flex;
-          gap:7px;
-          overflow-x:auto;
-          margin-bottom:10px;
-        "
-      >
-        ${botao(
-          partidaAtual.home.name,
-          "mudarRankingLado('casa')",
-          filtroRankingJogadores.lado ===
-          "casa"
+        ${colunaRanking(
+          jogadores,
+          partidaAtual?.home
         )}
 
-        ${botao(
-          partidaAtual.away.name,
-          "mudarRankingLado('fora')",
-          filtroRankingJogadores.lado ===
-          "fora"
+        ${colunaRanking(
+          jogadores,
+          partidaAtual?.away
         )}
       </div>
-
-      <div
-        style="
-          display:flex;
-          gap:7px;
-          overflow-x:auto;
-          margin-bottom:10px;
-        "
-      >
-        ${botao(
-          "Últimos 5",
-          "mudarRankingQuantidade(5)",
-          filtroRankingJogadores.quantidade ===
-          5
-        )}
-
-        ${botao(
-          "Últimos 10",
-          "mudarRankingQuantidade(10)",
-          filtroRankingJogadores.quantidade ===
-          10
-        )}
-      </div>
-
-      <select
-        onchange="mudarRankingCriterio(this.value)"
-        style="
-          width:100%;
-          border:1px solid rgba(255,255,255,.12);
-          border-radius:11px;
-          background:#101820;
-          color:#fff;
-          padding:11px;
-          font-weight:800;
-        "
-      >
-        ${
-          Object.entries(
-            CRITERIOS_RANKING
-          )
-            .map(
-              ([id, c]) => `
-                <option
-                  value="${e(id)}"
-                  ${
-                    filtroRankingJogadores.criterio ===
-                    id
-                      ? "selected"
-                      : ""
-                  }
-                >
-                  ${e(c.nome)}
-                </option>
-              `
-            )
-            .join("")
-        }
-      </select>
     `)}
 
     ${painel(`
       ${tituloSecao(
-        nomeTime,
-        `${jogadores.length} jogador(es) encontrados`
+        "Jogadores da partida",
+        "Estatísticas disponíveis no jogo atual."
       )}
 
-      ${
-        jogadores.length
-          ? `
-            <div
-              style="
-                display:grid;
-                grid-template-columns:repeat(
-                  auto-fit,
-                  minmax(240px,1fr)
-                );
-                gap:9px;
-              "
-            >
-              ${
-                jogadores
+      <div
+        style="
+          display:grid;
+          grid-template-columns:1fr 1fr;
+          gap:12px;
+        "
+      >
+        <div>
+          <div
+            style="
+              margin-bottom:10px;
+              font-size:12px;
+              font-weight:950;
+              color:#2ee58b;
+            "
+          >
+            ${e(
+              partidaAtual?.home?.name
+            )}
+          </div>
+
+          ${
+            casa.length
+              ? casa
                   .map(
-                    (j, i) =>
-                      cardRankingJogador(
-                        j,
-                        i + 1
-                      )
+                    cardJogadorPartida
                   )
                   .join("")
-              }
-            </div>
-          `
-          : `
-            <div
-              style="
-                padding:20px;
-                text-align:center;
-                opacity:.65;
-              "
-            >
-              Nenhum jogador encontrado
-              nesta amostra.
-            </div>
-          `
-      }
+              : `
+                <div
+                  style="
+                    opacity:.5;
+                    font-size:11px;
+                  "
+                >
+                  Sem estatísticas individuais.
+                </div>
+              `
+          }
+        </div>
+
+        <div>
+          <div
+            style="
+              margin-bottom:10px;
+              font-size:12px;
+              font-weight:950;
+            "
+          >
+            ${e(
+              partidaAtual?.away?.name
+            )}
+          </div>
+
+          ${
+            fora.length
+              ? fora
+                  .map(
+                    cardJogadorPartida
+                  )
+                  .join("")
+              : `
+                <div
+                  style="
+                    opacity:.5;
+                    font-size:11px;
+                  "
+                >
+                  Sem estatísticas individuais.
+                </div>
+              `
+          }
+        </div>
+      </div>
     `)}
   `;
 }
-  /* =========================================================
-   ESTATÍSTICAS DA PARTIDA
+/* =========================================================
+   ESTATÍSTICAS DETALHADAS DA PARTIDA
 ========================================================= */
 
-function nomeEstatistica(tipo) {
-  const nomes = {
-    "Shots on Goal": "Chutes no alvo",
-    "Shots off Goal": "Chutes para fora",
-    "Total Shots": "Chutes",
-    "Blocked Shots": "Chutes bloqueados",
-    "Shots insidebox": "Chutes dentro da área",
-    "Shots outsidebox": "Chutes fora da área",
-    "Fouls": "Faltas",
-    "Corner Kicks": "Escanteios",
-    "Offsides": "Impedimentos",
-    "Ball Possession": "Posse de bola",
-    "Yellow Cards": "Cartões amarelos",
-    "Red Cards": "Cartões vermelhos",
-    "Goalkeeper Saves": "Defesas",
-    "Total passes": "Passes",
-    "Passes accurate": "Passes certos",
-    "Passes %": "Precisão dos passes",
-    "expected_goals": "xG",
-    "goals_prevented": "Gols evitados"
-  };
+function extrairBlocosEstatisticas() {
+  const fonte =
+    partidaAtual?.estatisticas;
 
-  return nomes[tipo] || tipo;
+  if (Array.isArray(fonte)) {
+    return fonte;
+  }
+
+  if (Array.isArray(fonte?.response)) {
+    return fonte.response;
+  }
+
+  if (Array.isArray(fonte?.statistics)) {
+    return fonte.statistics;
+  }
+
+  return [];
 }
 
-function valorEstatisticaTime(stats, tipo) {
-  const item =
-    safeArray(stats).find(
-      x =>
-        String(x.type).toLowerCase() ===
-        String(tipo).toLowerCase()
+function blocoEstatisticaTime(
+  teamId
+) {
+  return extrairBlocosEstatisticas()
+    .find(bloco => {
+      const id =
+        bloco?.team?.id ||
+        bloco?.time?.id ||
+        bloco?.teamId;
+
+      return (
+        Number(id) ===
+        Number(teamId)
+      );
+    }) || null;
+}
+
+function listaEstatisticasTime(
+  teamId
+) {
+  const bloco =
+    blocoEstatisticaTime(
+      teamId
     );
 
-  return item?.value ?? "-";
+  if (!bloco) {
+    return [];
+  }
+
+  if (
+    Array.isArray(
+      bloco.statistics
+    )
+  ) {
+    return bloco.statistics;
+  }
+
+  if (
+    Array.isArray(
+      bloco.estatisticas
+    )
+  ) {
+    return bloco.estatisticas;
+  }
+
+  return [];
 }
 
-function numeroEstatisticaVisual(v) {
+function mapaEstatisticasTime(
+  teamId
+) {
+  const mapa = {};
+
+  listaEstatisticasTime(
+    teamId
+  ).forEach(item => {
+    const tipo =
+      String(
+        item?.type ||
+        item?.nome ||
+        ""
+      ).trim();
+
+    if (!tipo) {
+      return;
+    }
+
+    mapa[tipo] =
+      item?.value ??
+      item?.valor ??
+      0;
+  });
+
+  return mapa;
+}
+
+function encontrarStat(
+  mapa,
+  nomes = []
+) {
+  for (const nome of nomes) {
+    if (
+      mapa[nome] !==
+      undefined
+    ) {
+      return mapa[nome];
+    }
+  }
+
+  return 0;
+}
+
+function numeroStat(
+  valorStat
+) {
   if (
-    v === null ||
-    v === undefined ||
-    v === "-"
+    valorStat === null ||
+    valorStat === undefined
   ) {
     return 0;
   }
 
-  const x =
+  const numero =
     Number(
-      String(v)
+      String(valorStat)
         .replace("%", "")
         .replace(",", ".")
     );
 
-  return Number.isFinite(x)
-    ? x
+  return Number.isFinite(numero)
+    ? numero
     : 0;
 }
 
-function linhaComparacaoEstatistica(
-  nome,
+function linhaComparacaoStat(
+  titulo,
   casa,
-  fora
+  fora,
+  percentual = false
 ) {
-  const nc =
-    numeroEstatisticaVisual(casa);
+  const numeroCasa =
+    numeroStat(casa);
 
-  const nf =
-    numeroEstatisticaVisual(fora);
+  const numeroFora =
+    numeroStat(fora);
 
   const total =
-    nc + nf;
+    numeroCasa +
+    numeroFora;
 
-  const pc =
+  const larguraCasa =
     total > 0
-      ? (nc / total) * 100
+      ? (
+          numeroCasa /
+          total
+        ) * 100
       : 50;
 
-  const pf =
-    100 - pc;
+  const larguraFora =
+    total > 0
+      ? (
+          numeroFora /
+          total
+        ) * 100
+      : 50;
+
+  const mostrarCasa =
+    percentual
+      ? `${numeroCasa}%`
+      : String(
+          casa ?? 0
+        );
+
+  const mostrarFora =
+    percentual
+      ? `${numeroFora}%`
+      : String(
+          fora ?? 0
+        );
 
   return `
     <div
       style="
-        padding:12px 0;
-        border-bottom:1px solid rgba(255,255,255,.07);
+        padding:11px 0;
+        border-bottom:1px solid rgba(255,255,255,.06);
       "
     >
       <div
         style="
           display:grid;
-          grid-template-columns:55px 1fr 55px;
-          gap:8px;
+          grid-template-columns:45px 1fr 45px;
           align-items:center;
+          gap:8px;
         "
       >
-        <strong style="text-align:left">
-          ${e(casa)}
+        <strong
+          style="
+            text-align:left;
+            font-size:13px;
+          "
+        >
+          ${e(mostrarCasa)}
         </strong>
 
         <div
           style="
             text-align:center;
-            font-size:11px;
+            font-size:10px;
+            opacity:.65;
             font-weight:800;
-            opacity:.7;
           "
         >
-          ${e(nome)}
+          ${e(titulo)}
         </div>
 
-        <strong style="text-align:right">
-          ${e(fora)}
+        <strong
+          style="
+            text-align:right;
+            font-size:13px;
+          "
+        >
+          ${e(mostrarFora)}
         </strong>
       </div>
 
       <div
         style="
-          display:flex;
-          gap:3px;
-          height:5px;
-          margin-top:8px;
-          overflow:hidden;
-          border-radius:6px;
-          background:rgba(255,255,255,.05);
+          display:grid;
+          grid-template-columns:1fr 1fr;
+          gap:4px;
+          margin-top:7px;
         "
       >
         <div
           style="
-            width:${pc}%;
-            background:#2ee58b;
+            height:5px;
+            background:rgba(255,255,255,.06);
+            border-radius:5px;
+            overflow:hidden;
+            display:flex;
+            justify-content:flex-end;
           "
-        ></div>
+        >
+          <div
+            style="
+              height:100%;
+              width:${larguraCasa}%;
+              background:#2ee58b;
+              border-radius:5px;
+            "
+          ></div>
+        </div>
 
         <div
           style="
-            width:${pf}%;
-            background:rgba(255,255,255,.32);
+            height:5px;
+            background:rgba(255,255,255,.06);
+            border-radius:5px;
+            overflow:hidden;
           "
-        ></div>
+        >
+          <div
+            style="
+              height:100%;
+              width:${larguraFora}%;
+              background:rgba(255,255,255,.65);
+              border-radius:5px;
+            "
+          ></div>
+        </div>
       </div>
     </div>
   `;
 }
 
 function renderEstatisticasPartida() {
-  const stats =
-    safeArray(
-      partidaAtual?.estatisticas
+  const casa =
+    mapaEstatisticasTime(
+      partidaAtual?.home?.id
     );
 
-  if (!stats.length) {
+  const fora =
+    mapaEstatisticasTime(
+      partidaAtual?.away?.id
+    );
+
+  const temDados =
+    Object.keys(casa).length ||
+    Object.keys(fora).length;
+
+  if (!temDados) {
     return painel(`
       ${tituloSecao(
-        "Estatísticas da partida",
-        "Dados ainda não disponíveis."
+        "Estatísticas",
+        "Dados detalhados da partida"
       )}
 
       <div
         style="
-          padding:18px;
+          padding:20px;
           text-align:center;
-          opacity:.65;
+          opacity:.6;
         "
       >
-        As estatísticas aparecerão quando
-        forem disponibilizadas pela competição.
+        Estatísticas ainda não disponíveis.
       </div>
     `);
   }
 
-  const casa =
-    stats.find(
-      x =>
-        String(x.team?.id) ===
-        String(partidaAtual.home.id)
-    ) || stats[0];
+  const linhas = [
+    {
+      titulo: "Chutes",
+      casa: encontrarStat(
+        casa,
+        [
+          "Total Shots",
+          "Shots"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Total Shots",
+          "Shots"
+        ]
+      )
+    },
 
-  const fora =
-    stats.find(
-      x =>
-        String(x.team?.id) ===
-        String(partidaAtual.away.id)
-    ) || stats[1];
+    {
+      titulo: "Chutes no alvo",
+      casa: encontrarStat(
+        casa,
+        [
+          "Shots on Goal"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Shots on Goal"
+        ]
+      )
+    },
 
-  const sc =
-    safeArray(
-      casa?.statistics
-    );
+    {
+      titulo: "Chutes para fora",
+      casa: encontrarStat(
+        casa,
+        [
+          "Shots off Goal"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Shots off Goal"
+        ]
+      )
+    },
 
-  const sf =
-    safeArray(
-      fora?.statistics
-    );
+    {
+      titulo: "Chutes bloqueados",
+      casa: encontrarStat(
+        casa,
+        [
+          "Blocked Shots"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Blocked Shots"
+        ]
+      )
+    },
 
-  const tipos =
-    [
-      "expected_goals",
-      "Total Shots",
-      "Shots on Goal",
-      "Shots off Goal",
-      "Blocked Shots",
-      "Shots insidebox",
-      "Shots outsidebox",
-      "Corner Kicks",
-      "Fouls",
-      "Yellow Cards",
-      "Red Cards",
-      "Offsides",
-      "Ball Possession",
-      "Goalkeeper Saves",
-      "Total passes",
-      "Passes accurate",
-      "Passes %"
-    ];
+    {
+      titulo: "Escanteios",
+      casa: encontrarStat(
+        casa,
+        [
+          "Corner Kicks"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Corner Kicks"
+        ]
+      )
+    },
+
+    {
+      titulo: "Posse de bola",
+      casa: encontrarStat(
+        casa,
+        [
+          "Ball Possession"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Ball Possession"
+        ]
+      ),
+      percentual: true
+    },
+
+    {
+      titulo: "Faltas",
+      casa: encontrarStat(
+        casa,
+        [
+          "Fouls"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Fouls"
+        ]
+      )
+    },
+
+    {
+      titulo: "Impedimentos",
+      casa: encontrarStat(
+        casa,
+        [
+          "Offsides"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Offsides"
+        ]
+      )
+    },
+
+    {
+      titulo: "Cartões amarelos",
+      casa: encontrarStat(
+        casa,
+        [
+          "Yellow Cards"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Yellow Cards"
+        ]
+      )
+    },
+
+    {
+      titulo: "Cartões vermelhos",
+      casa: encontrarStat(
+        casa,
+        [
+          "Red Cards"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Red Cards"
+        ]
+      )
+    },
+
+    {
+      titulo: "Defesas do goleiro",
+      casa: encontrarStat(
+        casa,
+        [
+          "Goalkeeper Saves"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Goalkeeper Saves"
+        ]
+      )
+    },
+
+    {
+      titulo: "Passes",
+      casa: encontrarStat(
+        casa,
+        [
+          "Total passes",
+          "Total Passes"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Total passes",
+          "Total Passes"
+        ]
+      )
+    },
+
+    {
+      titulo: "Passes certos",
+      casa: encontrarStat(
+        casa,
+        [
+          "Passes accurate",
+          "Passes Accurate"
+        ]
+      ),
+      fora: encontrarStat(
+        fora,
+        [
+          "Passes accurate",
+          "Passes Accurate"
+        ]
+      )
+    }
+  ];
 
   return painel(`
     ${tituloSecao(
       "Estatísticas da partida",
-      "Comparativo entre as equipes"
+      "Comparação em tempo real quando disponível"
     )}
 
     <div
       style="
         display:grid;
         grid-template-columns:1fr 1fr;
-        gap:10px;
-        margin-bottom:10px;
-        text-align:center;
+        gap:8px;
+        margin-bottom:8px;
       "
     >
-      <strong>
-        ${e(partidaAtual.home.name)}
-      </strong>
+      <div
+        style="
+          font-size:11px;
+          font-weight:950;
+          color:#2ee58b;
+        "
+      >
+        ${e(
+          partidaAtual?.home?.name
+        )}
+      </div>
 
-      <strong>
-        ${e(partidaAtual.away.name)}
-      </strong>
+      <div
+        style="
+          text-align:right;
+          font-size:11px;
+          font-weight:950;
+        "
+      >
+        ${e(
+          partidaAtual?.away?.name
+        )}
+      </div>
     </div>
 
     ${
-      tipos
-        .filter(tipo => {
-          const a =
-            valorEstatisticaTime(
-              sc,
-              tipo
-            );
-
-          const b =
-            valorEstatisticaTime(
-              sf,
-              tipo
-            );
-
-          return !(
-            a === "-" &&
-            b === "-"
-          );
-        })
-        .map(tipo =>
-          linhaComparacaoEstatistica(
-            nomeEstatistica(tipo),
-
-            valorEstatisticaTime(
-              sc,
-              tipo
-            ),
-
-            valorEstatisticaTime(
-              sf,
-              tipo
-            )
+      linhas
+        .map(item =>
+          linhaComparacaoStat(
+            item.titulo,
+            item.casa,
+            item.fora,
+            item.percentual
           )
         )
         .join("")
     }
   `);
 }
-
 /* =========================================================
    EVENTOS DA PARTIDA
 ========================================================= */
 
-function iconeEvento(ev) {
+function extrairEventosPartida() {
+  const fonte =
+    partidaAtual?.eventos;
+
+  if (Array.isArray(fonte)) {
+    return fonte;
+  }
+
+  if (Array.isArray(fonte?.response)) {
+    return fonte.response;
+  }
+
+  if (Array.isArray(fonte?.events)) {
+    return fonte.events;
+  }
+
+  return [];
+}
+
+function minutoEvento(ev = {}) {
+  const tempo =
+    ev.time ||
+    ev.tempo ||
+    {};
+
+  const minuto =
+    tempo.elapsed ??
+    ev.minute ??
+    ev.minuto ??
+    "";
+
+  const extra =
+    tempo.extra ??
+    ev.extra ??
+    null;
+
+  if (
+    minuto === "" ||
+    minuto === null
+  ) {
+    return "-";
+  }
+
+  return extra
+    ? `${minuto}+${extra}'`
+    : `${minuto}'`;
+}
+
+function tipoEvento(ev = {}) {
+  return String(
+    ev.type ||
+    ev.tipo ||
+    ""
+  ).toLowerCase();
+}
+
+function detalheEvento(ev = {}) {
+  return String(
+    ev.detail ||
+    ev.detalhe ||
+    ""
+  ).toLowerCase();
+}
+
+function iconeEvento(ev = {}) {
   const tipo =
-    String(
-      ev.type || ""
-    ).toLowerCase();
+    tipoEvento(ev);
 
   const detalhe =
-    String(
-      ev.detail || ""
-    ).toLowerCase();
+    detalheEvento(ev);
 
-  if (tipo === "goal") {
+  if (
+    tipo.includes("goal") ||
+    tipo.includes("gol")
+  ) {
     return "⚽";
   }
 
   if (
-    detalhe.includes("yellow")
+    tipo.includes("card") ||
+    tipo.includes("cart")
   ) {
+    if (
+      detalhe.includes("red") ||
+      detalhe.includes("vermel")
+    ) {
+      return "🟥";
+    }
+
     return "🟨";
   }
 
   if (
-    detalhe.includes("red")
+    tipo.includes("subst") ||
+    tipo.includes("substit")
   ) {
-    return "🟥";
-  }
-
-  if (tipo === "subst") {
     return "↔";
   }
 
-  if (tipo === "var") {
+  if (
+    tipo.includes("var")
+  ) {
     return "VAR";
   }
 
   return "•";
 }
 
-function descricaoEvento(ev) {
+function nomeEvento(ev = {}) {
   const tipo =
-    String(
-      ev.type || ""
-    );
+    tipoEvento(ev);
 
-  const detalhe =
-    String(
-      ev.detail || ""
-    );
+  const detalheOriginal =
+    ev.detail ||
+    ev.detalhe ||
+    "";
 
   if (
-    tipo.toLowerCase() ===
-    "goal"
+    tipo.includes("goal") ||
+    tipo.includes("gol")
   ) {
-    return detalhe ||
-      "Gol";
+    return "Gol";
   }
 
   if (
-    tipo.toLowerCase() ===
-    "subst"
+    tipo.includes("card") ||
+    tipo.includes("cart")
+  ) {
+    return detalheOriginal ||
+      "Cartão";
+  }
+
+  if (
+    tipo.includes("subst") ||
+    tipo.includes("substit")
   ) {
     return "Substituição";
   }
 
-  return detalhe || tipo;
+  if (
+    tipo.includes("var")
+  ) {
+    return "VAR";
+  }
+
+  return (
+    ev.type ||
+    ev.tipo ||
+    "Evento"
+  );
 }
 
-function linhaEvento(ev) {
-  const minuto =
-    ev.time?.elapsed ??
-    ev.elapsed ??
-    "-";
+function dadosEvento(ev = {}) {
+  const team =
+    ev.team ||
+    ev.time ||
+    {};
 
-  const extra =
-    ev.time?.extra;
-
-  const jogador =
-    ev.player?.name ||
+  const player =
+    ev.player ||
     ev.jogador ||
-    "";
+    {};
 
-  const assistencia =
-    ev.assist?.name ||
-    "";
+  const assist =
+    ev.assist ||
+    ev.assistencia ||
+    {};
 
-  const time =
-    ev.team?.name ||
-    "";
+  return {
+    minuto:
+      minutoEvento(ev),
+
+    icone:
+      iconeEvento(ev),
+
+    titulo:
+      nomeEvento(ev),
+
+    teamId:
+      team.id ||
+      ev.teamId,
+
+    time:
+      team.name ||
+      team.nome ||
+      ev.teamName ||
+      "",
+
+    jogador:
+      player.name ||
+      player.nome ||
+      ev.playerName ||
+      "",
+
+    jogadorId:
+      player.id ||
+      ev.playerId ||
+      null,
+
+    assistencia:
+      assist.name ||
+      assist.nome ||
+      "",
+
+    detalhe:
+      ev.detail ||
+      ev.detalhe ||
+      "",
+
+    comentarios:
+      ev.comments ||
+      ev.comentarios ||
+      ""
+  };
+}
+
+function cardEventoPartida(ev) {
+  const d =
+    dadosEvento(ev);
+
+  const casa =
+    Number(d.teamId) ===
+    Number(
+      partidaAtual?.home?.id
+    );
+
+  const fora =
+    Number(d.teamId) ===
+    Number(
+      partidaAtual?.away?.id
+    );
 
   return `
     <div
       style="
         display:grid;
-        grid-template-columns:42px 32px 1fr;
-        gap:8px;
-        align-items:flex-start;
-        padding:11px 0;
-        border-bottom:1px solid rgba(255,255,255,.07);
+        grid-template-columns:48px 1fr;
+        gap:10px;
+        padding:12px 0;
+        border-bottom:1px solid rgba(255,255,255,.06);
       "
     >
-      <strong
-        style="
-          color:#2ee58b;
-          font-size:12px;
-        "
-      >
-        ${e(minuto)}${
-          extra
-            ? `+${e(extra)}`
-            : ""
-        }'
-      </strong>
-
       <div
         style="
-          font-size:17px;
+          font-size:12px;
+          font-weight:950;
+          color:#2ee58b;
           text-align:center;
+          padding-top:4px;
         "
       >
-        ${iconeEvento(ev)}
+        ${e(d.minuto)}
       </div>
 
       <div>
         <div
           style="
-            font-weight:900;
-            font-size:13px;
+            display:flex;
+            align-items:center;
+            gap:8px;
           "
         >
-          ${e(
-            jogador ||
-            descricaoEvento(ev)
-          )}
+          <div
+            style="
+              min-width:26px;
+              font-size:17px;
+              font-weight:950;
+              text-align:center;
+            "
+          >
+            ${e(d.icone)}
+          </div>
+
+          <div style="min-width:0">
+            <div
+              style="
+                font-size:12px;
+                font-weight:950;
+              "
+            >
+              ${e(d.titulo)}
+            </div>
+
+            <div
+              style="
+                margin-top:2px;
+                font-size:9px;
+                opacity:.5;
+              "
+            >
+              ${e(
+                d.time ||
+                (
+                  casa
+                    ? partidaAtual?.home?.name
+                    : fora
+                      ? partidaAtual?.away?.name
+                      : ""
+                )
+              )}
+            </div>
+          </div>
         </div>
 
-        <div
-          style="
-            margin-top:3px;
-            font-size:10px;
-            opacity:.6;
-          "
-        >
-          ${e(time)}
+        ${
+          d.jogador
+            ? `
+              <button
+                ${
+                  d.jogadorId
+                    ? `onclick="abrirJogador(${Number(
+                        d.jogadorId
+                      )})"`
+                    : ""
+                }
+                style="
+                  display:block;
+                  margin-top:8px;
+                  padding:0;
+                  border:0;
+                  background:transparent;
+                  color:#fff;
+                  font-size:12px;
+                  font-weight:850;
+                  text-align:left;
+                "
+              >
+                ${e(d.jogador)}
+              </button>
+            `
+            : ""
+        }
 
-          ${
-            assistencia
-              ? ` • Assistência: ${e(assistencia)}`
-              : ""
-          }
-        </div>
+        ${
+          d.assistencia
+            ? `
+              <div
+                style="
+                  margin-top:3px;
+                  font-size:10px;
+                  opacity:.6;
+                "
+              >
+                Assistência:
+                ${e(d.assistencia)}
+              </div>
+            `
+            : ""
+        }
 
-        <div
-          style="
-            margin-top:2px;
-            font-size:10px;
-            opacity:.45;
-          "
-        >
-          ${e(descricaoEvento(ev))}
-        </div>
+        ${
+          d.detalhe &&
+          String(d.detalhe)
+            .toLowerCase() !==
+            String(d.titulo)
+              .toLowerCase()
+            ? `
+              <div
+                style="
+                  margin-top:3px;
+                  font-size:10px;
+                  opacity:.55;
+                "
+              >
+                ${e(d.detalhe)}
+              </div>
+            `
+            : ""
+        }
+
+        ${
+          d.comentarios
+            ? `
+              <div
+                style="
+                  margin-top:4px;
+                  font-size:9px;
+                  opacity:.45;
+                "
+              >
+                ${e(d.comentarios)}
+              </div>
+            `
+            : ""
+        }
       </div>
     </div>
   `;
@@ -6959,33 +6428,27 @@ function linhaEvento(ev) {
 
 function renderEventosPartida() {
   const eventos =
-    safeArray(
-      partidaAtual?.eventos
-    );
+    extrairEventosPartida();
 
   return painel(`
     ${tituloSecao(
       "Eventos",
-      "Linha do tempo da partida"
+      "Gols, cartões, substituições e VAR"
     )}
 
     ${
       eventos.length
         ? eventos
-            .slice()
-            .sort(
-              (a, b) =>
-                n(a.time?.elapsed) -
-                n(b.time?.elapsed)
+            .map(
+              cardEventoPartida
             )
-            .map(linhaEvento)
             .join("")
         : `
           <div
             style="
               padding:20px;
               text-align:center;
-              opacity:.65;
+              opacity:.6;
             "
           >
             Nenhum evento disponível
@@ -6995,136 +6458,603 @@ function renderEventosPartida() {
     }
   `);
 }
-
 /* =========================================================
-   ODDS DA PARTIDA
+   PRESSÃO AO VIVO
 ========================================================= */
 
-function extrairBookmakersOdds() {
-  const origem =
-    partidaAtual?.odds;
+function statsPressaoTime(
+  teamId
+) {
+  const mapa =
+    mapaEstatisticasTime(
+      teamId
+    );
 
-  const resposta =
-    Array.isArray(origem)
-      ? origem
-      : safeArray(
-          origem?.response ||
-          origem?.dados
-        );
+  return {
+    chutes:
+      numeroStat(
+        encontrarStat(
+          mapa,
+          ["Total Shots", "Shots"]
+        )
+      ),
 
-  const bookmakers = [];
+    noAlvo:
+      numeroStat(
+        encontrarStat(
+          mapa,
+          ["Shots on Goal"]
+        )
+      ),
 
-  resposta.forEach(item => {
-    safeArray(
-      item.bookmakers
-    ).forEach(book => {
-      bookmakers.push(book);
-    });
-  });
+    bloqueados:
+      numeroStat(
+        encontrarStat(
+          mapa,
+          ["Blocked Shots"]
+        )
+      ),
 
-  return bookmakers;
+    escanteios:
+      numeroStat(
+        encontrarStat(
+          mapa,
+          ["Corner Kicks"]
+        )
+      ),
+
+    posse:
+      numeroStat(
+        encontrarStat(
+          mapa,
+          ["Ball Possession"]
+        )
+      )
+  };
 }
 
-function mercadosOdds() {
-  const books =
-    extrairBookmakersOdds();
+function calcularIndicePressao(
+  stats
+) {
+  const s =
+    stats || {};
 
-  const mercados = [];
+  const indice =
+    n(s.noAlvo) * 4 +
+    n(s.chutes) * 1.5 +
+    n(s.bloqueados) * 1.5 +
+    n(s.escanteios) * 2 +
+    Math.max(
+      0,
+      n(s.posse) - 50
+    ) * 0.15;
 
-  books.forEach(book => {
-    safeArray(book.bets)
-      .forEach(bet => {
-        mercados.push({
-          bookmaker:
-            book.name ||
-            "Casa",
-
-          bookmakerId:
-            book.id,
-
-          mercado:
-            bet.name ||
-            "Mercado",
-
-          mercadoId:
-            bet.id,
-
-          valores:
-            safeArray(
-              bet.values
-            )
-        });
-      });
-  });
-
-  return mercados;
+  return Math.max(
+    0,
+    Math.round(
+      indice * 10
+    ) / 10
+  );
 }
 
-function linhaMercadoOdd(m) {
+function nivelPressao(
+  indice
+) {
+  if (indice >= 35) {
+    return "Pressão muito forte";
+  }
+
+  if (indice >= 24) {
+    return "Pressão forte";
+  }
+
+  if (indice >= 15) {
+    return "Pressão moderada";
+  }
+
+  return "Pressão baixa";
+}
+
+function barraPressao(
+  nome,
+  indice,
+  maximo
+) {
+  const largura =
+    maximo > 0
+      ? Math.min(
+          100,
+          (
+            indice /
+            maximo
+          ) * 100
+        )
+      : 0;
+
   return `
     <div
       style="
-        padding:13px 0;
-        border-bottom:1px solid rgba(255,255,255,.07);
+        margin-top:12px;
       "
     >
       <div
         style="
           display:flex;
           justify-content:space-between;
-          gap:10px;
-          margin-bottom:8px;
+          gap:8px;
+          font-size:11px;
         "
       >
         <strong>
-          ${e(m.mercado)}
+          ${e(nome)}
         </strong>
 
-        <span
+        <strong
           style="
-            font-size:10px;
-            opacity:.55;
+            color:#2ee58b;
           "
         >
-          ${e(m.bookmaker)}
-        </span>
+          ${indice.toFixed(1)}
+        </strong>
+      </div>
+
+      <div
+        style="
+          margin-top:6px;
+          height:8px;
+          border-radius:8px;
+          background:rgba(255,255,255,.06);
+          overflow:hidden;
+        "
+      >
+        <div
+          style="
+            width:${largura}%;
+            height:100%;
+            border-radius:8px;
+            background:#2ee58b;
+          "
+        ></div>
+      </div>
+
+      <div
+        style="
+          margin-top:4px;
+          font-size:9px;
+          opacity:.5;
+        "
+      >
+        ${e(
+          nivelPressao(indice)
+        )}
+      </div>
+    </div>
+  `;
+}
+
+function renderPressaoAoVivo() {
+  const casa =
+    statsPressaoTime(
+      partidaAtual?.home?.id
+    );
+
+  const fora =
+    statsPressaoTime(
+      partidaAtual?.away?.id
+    );
+
+  const indiceCasa =
+    calcularIndicePressao(
+      casa
+    );
+
+  const indiceFora =
+    calcularIndicePressao(
+      fora
+    );
+
+  const maximo =
+    Math.max(
+      40,
+      indiceCasa,
+      indiceFora
+    );
+
+  const aoVivo =
+    isStatusAoVivo(
+      partidaAtual?.status
+    );
+
+  return painel(`
+    ${tituloSecao(
+      "Índice de Pressão Profianalises",
+      aoVivo
+        ? "Leitura do estado atual da partida"
+        : "Disponível principalmente durante partidas ao vivo"
+    )}
+
+    ${barraPressao(
+      partidaAtual?.home?.name ||
+      "Casa",
+      indiceCasa,
+      maximo
+    )}
+
+    ${barraPressao(
+      partidaAtual?.away?.name ||
+      "Fora",
+      indiceFora,
+      maximo
+    )}
+
+    <div
+      style="
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:9px;
+        margin-top:16px;
+      "
+    >
+      <div
+        style="
+          padding:11px;
+          border-radius:11px;
+          background:rgba(46,229,139,.045);
+        "
+      >
+        <div
+          style="
+            font-size:10px;
+            font-weight:950;
+            color:#2ee58b;
+          "
+        >
+          ${e(
+            partidaAtual?.home?.name
+          )}
+        </div>
+
+        <div
+          style="
+            margin-top:8px;
+            font-size:10px;
+            line-height:1.7;
+          "
+        >
+          Chutes:
+          <strong>${casa.chutes}</strong>
+          <br>
+
+          No alvo:
+          <strong>${casa.noAlvo}</strong>
+          <br>
+
+          Bloqueados:
+          <strong>${casa.bloqueados}</strong>
+          <br>
+
+          Escanteios:
+          <strong>${casa.escanteios}</strong>
+          <br>
+
+          Posse:
+          <strong>${casa.posse}%</strong>
+        </div>
+      </div>
+
+      <div
+        style="
+          padding:11px;
+          border-radius:11px;
+          background:rgba(255,255,255,.03);
+        "
+      >
+        <div
+          style="
+            font-size:10px;
+            font-weight:950;
+          "
+        >
+          ${e(
+            partidaAtual?.away?.name
+          )}
+        </div>
+
+        <div
+          style="
+            margin-top:8px;
+            font-size:10px;
+            line-height:1.7;
+          "
+        >
+          Chutes:
+          <strong>${fora.chutes}</strong>
+          <br>
+
+          No alvo:
+          <strong>${fora.noAlvo}</strong>
+          <br>
+
+          Bloqueados:
+          <strong>${fora.bloqueados}</strong>
+          <br>
+
+          Escanteios:
+          <strong>${fora.escanteios}</strong>
+          <br>
+
+          Posse:
+          <strong>${fora.posse}%</strong>
+        </div>
+      </div>
+    </div>
+
+    <div
+      style="
+        margin-top:13px;
+        padding:10px;
+        border-radius:10px;
+        background:rgba(255,255,255,.025);
+        font-size:9px;
+        line-height:1.6;
+        opacity:.55;
+      "
+    >
+      O índice combina chutes,
+      chutes no alvo, bloqueios,
+      escanteios e posse.
+      É um indicador próprio de pressão,
+      não uma probabilidade de gol.
+    </div>
+  `);
+}
+/* =========================================================
+   ODDS DA PARTIDA
+========================================================= */
+
+function extrairOddsPartida() {
+  const fonte =
+    partidaAtual?.odds;
+
+  if (!fonte) {
+    return [];
+  }
+
+  if (Array.isArray(fonte)) {
+    return fonte;
+  }
+
+  if (Array.isArray(fonte.response)) {
+    return fonte.response;
+  }
+
+  if (Array.isArray(fonte.odds)) {
+    return fonte.odds;
+  }
+
+  if (Array.isArray(fonte.bookmakers)) {
+    return [
+      {
+        bookmakers:
+          fonte.bookmakers
+      }
+    ];
+  }
+
+  return [];
+}
+
+function extrairBookmakers() {
+  const resultado = [];
+
+  extrairOddsPartida()
+    .forEach(bloco => {
+      if (
+        Array.isArray(
+          bloco?.bookmakers
+        )
+      ) {
+        bloco.bookmakers
+          .forEach(book => {
+            resultado.push(book);
+          });
+
+        return;
+      }
+
+      if (
+        bloco?.bets ||
+        bloco?.markets
+      ) {
+        resultado.push(bloco);
+      }
+    });
+
+  return resultado;
+}
+
+function extrairMercadosBookmaker(
+  bookmaker
+) {
+  if (
+    Array.isArray(
+      bookmaker?.bets
+    )
+  ) {
+    return bookmaker.bets;
+  }
+
+  if (
+    Array.isArray(
+      bookmaker?.markets
+    )
+  ) {
+    return bookmaker.markets;
+  }
+
+  return [];
+}
+
+function nomeMercadoOdd(
+  mercado
+) {
+  return (
+    mercado?.name ||
+    mercado?.nome ||
+    mercado?.market ||
+    "Mercado"
+  );
+}
+
+function valoresMercadoOdd(
+  mercado
+) {
+  const fonte =
+    mercado?.values ||
+    mercado?.valores ||
+    mercado?.odds ||
+    [];
+
+  return Array.isArray(fonte)
+    ? fonte
+    : [];
+}
+
+function dadosValorOdd(
+  item
+) {
+  return {
+    nome:
+      item?.value ||
+      item?.name ||
+      item?.nome ||
+      item?.label ||
+      "-",
+
+    odd:
+      item?.odd ??
+      item?.price ??
+      item?.valor ??
+      null
+  };
+}
+
+function mercadoOddPermitido(
+  nome
+) {
+  const texto =
+    String(nome)
+      .toLowerCase();
+
+  const permitidos = [
+    "match winner",
+    "winner",
+    "1x2",
+    "goals over/under",
+    "over/under",
+    "total goals",
+    "corners",
+    "corner",
+    "cards",
+    "shots",
+    "shots on goal",
+    "both teams score",
+    "both teams to score"
+  ];
+
+  return permitidos.some(
+    termo =>
+      texto.includes(termo)
+  );
+}
+
+function cardMercadoOdds(
+  mercado
+) {
+  const valores =
+    valoresMercadoOdd(
+      mercado
+    )
+      .map(dadosValorOdd)
+      .filter(v => {
+        const odd =
+          Number(v.odd);
+
+        return (
+          Number.isFinite(odd) &&
+          odd > 1
+        );
+      });
+
+  if (!valores.length) {
+    return "";
+  }
+
+  return `
+    <div
+      style="
+        margin-top:11px;
+        padding:12px;
+        border-radius:12px;
+        background:rgba(255,255,255,.025);
+        border:1px solid rgba(255,255,255,.07);
+      "
+    >
+      <div
+        style="
+          font-size:11px;
+          font-weight:950;
+          margin-bottom:9px;
+        "
+      >
+        ${e(
+          nomeMercadoOdd(
+            mercado
+          )
+        )}
       </div>
 
       <div
         style="
           display:grid;
-          grid-template-columns:repeat(
-            auto-fit,
-            minmax(90px,1fr)
-          );
-          gap:6px;
+          grid-template-columns:repeat(2,1fr);
+          gap:7px;
         "
       >
         ${
-          m.valores
+          valores
             .map(v => `
               <div
                 style="
-                  padding:9px 6px;
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:center;
+                  gap:7px;
+                  padding:9px;
                   border-radius:9px;
-                  background:rgba(255,255,255,.045);
-                  text-align:center;
+                  background:rgba(255,255,255,.035);
                 "
               >
-                <div
+                <span
                   style="
                     font-size:10px;
-                    opacity:.6;
+                    overflow:hidden;
+                    text-overflow:ellipsis;
+                    white-space:nowrap;
                   "
                 >
-                  ${e(v.value)}
-                </div>
+                  ${e(v.nome)}
+                </span>
 
                 <strong
                   style="
-                    display:block;
-                    margin-top:4px;
-                    color:#2ee58b;
+                    color:${
+                      Number(v.odd) >=
+                      CONFIG.oddMinima
+                        ? "#2ee58b"
+                        : "#fff"
+                    };
+                    font-size:12px;
                   "
                 >
                   ${formatarOdd(v.odd)}
@@ -7139,592 +7069,656 @@ function linhaMercadoOdd(m) {
 }
 
 function renderOddsPartida() {
+  const bookmakers =
+    extrairBookmakers();
+
+  if (!bookmakers.length) {
+    return painel(`
+      ${tituloSecao(
+        "Odds",
+        "Cotações disponíveis para a partida"
+      )}
+
+      <div
+        style="
+          padding:20px;
+          border-radius:12px;
+          background:rgba(255,255,255,.025);
+          text-align:center;
+        "
+      >
+        <strong>
+          Odds não disponíveis no momento
+        </strong>
+
+        <div
+          style="
+            margin-top:7px;
+            font-size:10px;
+            line-height:1.5;
+            opacity:.55;
+          "
+        >
+          O Profianalises não cria
+          cotações quando a API
+          não fornece esse mercado.
+        </div>
+      </div>
+    `);
+  }
+
+  const bookmaker =
+    bookmakers[0];
+
   const mercados =
-    mercadosOdds();
+    extrairMercadosBookmaker(
+      bookmaker
+    );
+
+  const prioritarios =
+    mercados.filter(m =>
+      mercadoOddPermitido(
+        nomeMercadoOdd(m)
+      )
+    );
+
+  const exibidos =
+    prioritarios.length
+      ? prioritarios
+      : mercados.slice(0, 12);
 
   return painel(`
     ${tituloSecao(
       "Odds",
-      "Mercados disponíveis na fonte de dados"
+      bookmaker?.name
+        ? `Fonte: ${bookmaker.name}`
+        : "Cotações fornecidas pela API"
     )}
 
-    ${
-      mercados.length
-        ? mercados
-            .slice(0, 40)
-            .map(linhaMercadoOdd)
-            .join("")
-        : `
-          <div
-            style="
-              padding:20px;
-              text-align:center;
-              border-radius:12px;
-              background:rgba(255,255,255,.035);
-            "
-          >
-            <strong>
-              Odds ainda não disponíveis
-            </strong>
+    <div
+      style="
+        padding:9px 10px;
+        border-radius:10px;
+        background:rgba(46,229,139,.045);
+        border:1px solid rgba(46,229,139,.1);
+        font-size:10px;
+        line-height:1.5;
+      "
+    >
+      Odds a partir de
+      <strong style="color:#2ee58b">
+        ${formatarOdd(
+          CONFIG.oddMinima
+        )}
+      </strong>
+      recebem destaque visual.
+    </div>
 
-            <div
-              style="
-                margin-top:7px;
-                font-size:11px;
-                opacity:.6;
-                line-height:1.5;
-              "
-            >
-              Não exibiremos uma odd fictícia.
-              Quando o servidor retornar os mercados,
-              eles aparecerão aqui automaticamente.
-            </div>
-          </div>
-        `
+    ${
+      exibidos
+        .map(cardMercadoOdds)
+        .filter(Boolean)
+        .join("") ||
+      `
+        <div
+          style="
+            padding:20px;
+            text-align:center;
+            opacity:.6;
+          "
+        >
+          Nenhum mercado com
+          cotação válida disponível.
+        </div>
+      `
     }
   `);
-            }
-  /* =========================================================
-   PÁGINA INDIVIDUAL DO TIME
+}
+/* =========================================================
+   CONTEÚDO DAS ABAS DA PARTIDA
 ========================================================= */
 
-let timeSelecionado = null;
-
-let filtroTime = {
-  quantidade: 10,
-  local: "geral",
-  campeonato: "todos"
-};
-
-function ladoDoTime(id) {
-  if (
-    String(partidaAtual?.home?.id) ===
-    String(id)
+function conteudoAbaPartida() {
+  switch (
+    abaAtual
   ) {
-    return "casa";
-  }
+    case "analise":
+      return renderAnaliseAutomatica();
 
-  if (
-    String(partidaAtual?.away?.id) ===
-    String(id)
-  ) {
-    return "fora";
-  }
+    case "estatisticas":
+      return renderEstatisticasPartida();
 
-  return null;
+    case "eventos":
+      return renderEventosPartida();
+
+    case "jogadores":
+      return renderJogadores();
+
+    case "escalacoes":
+      return renderEscalacoes();
+
+    case "h2h":
+      return renderH2H();
+
+    case "odds":
+      return renderOddsPartida();
+
+    case "pressao":
+      return `
+        ${renderPressaoAoVivo()}
+        ${renderEstatisticasPartida()}
+      `;
+
+    case "resumo":
+    default:
+      return renderResumoPartida();
+  }
 }
 
-function dadosTimeSelecionado(id) {
-  const lado =
-    ladoDoTime(id);
+/* =========================================================
+   PÁGINA DA PARTIDA
+========================================================= */
 
-  if (!lado) {
-    return null;
-  }
+function renderPaginaPartida() {
+  const container =
+    document.getElementById(
+      "games"
+    ) ||
+    document.getElementById(
+      "list"
+    ) ||
+    document.getElementById(
+      "app"
+    );
 
-  const atual =
-    lado === "casa"
-      ? partidaAtual.home
-      : partidaAtual.away;
-
-  return {
-    id: atual.id,
-    nome: atual.name,
-    logo:
-      atual.logo ||
-      logoTime(atual.id),
-    lado
-  };
-}
-
-function abrirTime(id) {
-  const time =
-    dadosTimeSelecionado(id);
-
-  if (!time) {
+  if (!container) {
     return;
   }
 
-  timeSelecionado =
-    time;
+  if (!partidaAtual) {
+    container.innerHTML = `
+      <div
+        style="
+          padding:30px 15px;
+          text-align:center;
+        "
+      >
+        <strong>
+          Partida não carregada.
+        </strong>
+      </div>
+    `;
 
-  filtroTime = {
-    quantidade: 10,
-    local: "geral",
-    campeonato: "todos"
-  };
+    return;
+  }
 
-  renderPaginaTime();
+  container.innerHTML = `
+    <div
+      style="
+        max-width:760px;
+        margin:0 auto;
+        padding-bottom:40px;
+      "
+    >
+      ${cabecalhoPartida()}
+
+      ${barraAbasPartida()}
+
+      <div
+        id="conteudo-aba-partida"
+      >
+        ${conteudoAbaPartida()}
+      </div>
+    </div>
+  `;
+
+  window.scrollTo({
+    top: 0,
+    behavior: "instant"
+  });
 }
 
 /* =========================================================
-   HISTÓRICO DO TIME SELECIONADO
+   ATUALIZAÇÃO DA PARTIDA AO VIVO
 ========================================================= */
 
-function historicoDoTimeSelecionado() {
-  if (!timeSelecionado) {
-    return null;
-  }
+let timerPartidaAoVivo =
+  null;
 
-  return historicoAtual?.[
-    timeSelecionado.lado
-  ] || null;
+function pararAtualizacaoPartida() {
+  if (
+    timerPartidaAoVivo
+  ) {
+    clearInterval(
+      timerPartidaAoVivo
+    );
+
+    timerPartidaAoVivo =
+      null;
+  }
 }
 
-function todasPartidasTimeSelecionado() {
-  const h =
-    historicoDoTimeSelecionado();
+function iniciarAtualizacaoPartida() {
+  pararAtualizacaoPartida();
 
-  return safeArray(
-    h?.ultimas10?.partidas
+  if (
+    !partidaAtual?.id ||
+    !isStatusAoVivo(
+      partidaAtual?.status
+    )
+  ) {
+    return;
+  }
+
+  timerPartidaAoVivo =
+    setInterval(
+      async () => {
+        try {
+          const id =
+            partidaAtual?.id;
+
+          if (!id) {
+            return;
+          }
+
+          const [
+            fixtureData,
+            statsData,
+            eventsData,
+            playersData
+          ] =
+            await Promise.all([
+  fetchOpcional(
+    `${API}/fixture?id=${id}`
+  ),
+
+  fetchOpcional(
+    `${API}/fixture/statistics?id=${id}`
+  ),
+
+  fetchOpcional(
+    `${API}/fixture/events?id=${id}`
+  ),
+
+  fetchOpcional(
+    `${API}/fixture/players?id=${id}`
+  )
+]);
+
+          const fixture =
+            fixtureData?.response?.[0] ||
+            fixtureData?.fixture ||
+            fixtureData?.jogo ||
+            fixtureData ||
+            {};
+
+          if (
+            fixture?.fixture ||
+            fixture?.teams ||
+            fixture?.goals
+          ) {
+            partidaAtual.fixture =
+              fixture;
+
+            partidaAtual.home =
+              fixture?.teams?.home ||
+              partidaAtual.home;
+
+            partidaAtual.away =
+              fixture?.teams?.away ||
+              partidaAtual.away;
+
+            partidaAtual.goals =
+              fixture?.goals ||
+              partidaAtual.goals;
+
+            partidaAtual.status =
+              fixture?.fixture?.status ||
+              partidaAtual.status;
+          }
+
+          if (statsData) {
+            partidaAtual.estatisticas =
+              statsData?.response ||
+              statsData?.statistics ||
+              statsData;
+          }
+
+          if (eventsData) {
+            partidaAtual.eventos =
+              eventsData?.response ||
+              eventsData?.events ||
+              eventsData;
+          }
+
+          if (playersData) {
+            partidaAtual.jogadores =
+              playersData?.response ||
+              playersData?.players ||
+              playersData;
+          }
+
+          renderPaginaPartida();
+
+          if (
+            !isStatusAoVivo(
+              partidaAtual?.status
+            )
+          ) {
+            pararAtualizacaoPartida();
+          }
+        } catch (erro) {
+          console.error(
+            "Erro atualização ao vivo:",
+            erro
+          );
+        }
+      },
+      CONFIG.intervaloAtualizacaoAoVivo ||
+        60000
+    );
+}
+
+/* =========================================================
+   VOLTAR PARA HOME SEM RECARREGAMENTO FORÇADO
+========================================================= */
+
+function mostrarHome() {
+  pararAtualizacaoPartida();
+
+  partidaAtual = null;
+  historicoAtual = null;
+  abaAtual = "resumo";
+
+  const url =
+    new URL(
+      window.location.href
+    );
+
+  url.searchParams.delete(
+    "jogo"
+  );
+
+  url.searchParams.delete(
+    "time"
+  );
+
+  url.searchParams.delete(
+    "jogador"
+  );
+
+  window.history.pushState(
+    {},
+    "",
+    url.pathname +
+      url.search
+  );
+
+  render(jogos);
+}
+/* =========================================================
+   PÁGINA INDIVIDUAL DO TIME
+========================================================= */
+
+let timeAtual = null;
+let historicoTimeAtual = null;
+
+async function abrirTime(
+  teamId
+) {
+  const id =
+    Number(teamId);
+
+  if (!id) {
+    return;
+  }
+
+  pararAtualizacaoPartida();
+
+  const container =
+    document.getElementById(
+      "games"
+    ) ||
+    document.getElementById(
+      "list"
+    ) ||
+    document.getElementById(
+      "app"
+    );
+
+  if (container) {
+    container.innerHTML = `
+      <div
+        style="
+          padding:35px 15px;
+          text-align:center;
+        "
+      >
+        <strong>
+          Carregando equipe...
+        </strong>
+      </div>
+    `;
+  }
+
+  try {
+    const dados =
+      await fetchJson(
+        `${API}/historico/team/${id}`
+      );
+
+    historicoTimeAtual =
+      dados || null;
+
+    timeAtual =
+      dados?.team ||
+      dados?.time ||
+      {
+        id,
+        name:
+          dados?.nome ||
+          `Time ${id}`
+      };
+
+    const url =
+      new URL(
+        window.location.href
+      );
+
+    url.searchParams.delete(
+      "jogo"
+    );
+
+    url.searchParams.delete(
+      "jogador"
+    );
+
+    url.searchParams.set(
+      "time",
+      id
+    );
+
+    window.history.pushState(
+      {},
+      "",
+      url.pathname +
+        url.search
+    );
+
+    renderPaginaTime();
+  } catch (erro) {
+    console.error(
+      "Erro ao abrir time:",
+      erro
+    );
+
+    if (container) {
+      container.innerHTML = `
+        <div
+          style="
+            padding:30px 15px;
+            text-align:center;
+          "
+        >
+          <strong>
+            Não foi possível carregar a equipe.
+          </strong>
+
+          <div style="margin-top:15px">
+            ${botao(
+              "Voltar",
+              "mostrarHome()",
+              true
+            )}
+          </div>
+        </div>
+      `;
+    }
+  }
+}
+
+/* =========================================================
+   PARTIDAS DO TIME
+========================================================= */
+
+function partidasDoTime(
+  quantidade = 10
+) {
+  const h =
+    historicoTimeAtual;
+
+  const chave =
+    Number(quantidade) === 5
+      ? "ultimas5"
+      : "ultimas10";
+
+  const fontes = [
+    h?.[chave]?.partidas,
+    h?.historico?.[chave]?.partidas,
+    h?.partidas,
+    h?.jogos
+  ];
+
+  for (const fonte of fontes) {
+    if (
+      Array.isArray(fonte)
+    ) {
+      return fonte.slice(
+        0,
+        quantidade
+      );
+    }
+  }
+
+  return [];
+}
+
+function nomeTimeAtual() {
+  return (
+    timeAtual?.name ||
+    timeAtual?.nome ||
+    historicoTimeAtual?.team?.name ||
+    historicoTimeAtual?.time?.name ||
+    historicoTimeAtual?.nome ||
+    "Equipe"
   );
 }
 
-function campeonatosTimeSelecionado() {
-  const mapa =
-    new Map();
-
-  todasPartidasTimeSelecionado()
-    .forEach(p => {
-      const id =
-        idLigaHistorica(p);
-
-      const nome =
-        nomeLigaHistorica(p);
-
-      if (
-        id != null &&
-        !mapa.has(String(id))
-      ) {
-        mapa.set(
-          String(id),
-          {
-            id,
-            nome
-          }
-        );
-      }
-    });
-
-  return [...mapa.values()];
-}
-
-function partidasFiltradasTime() {
-  let lista =
-    todasPartidasTimeSelecionado();
-
-  if (
-    filtroTime.quantidade === 5
-  ) {
-    lista =
-      lista.slice(0, 5);
-  } else {
-    lista =
-      lista.slice(0, 10);
-  }
-
-  if (
-    filtroTime.local === "casa"
-  ) {
-    lista =
-      lista.filter(
-        partidaEhCasa
-      );
-  }
-
-  if (
-    filtroTime.local === "fora"
-  ) {
-    lista =
-      lista.filter(
-        partidaEhFora
-      );
-  }
-
-  if (
-    filtroTime.campeonato !==
-    "todos"
-  ) {
-    lista =
-      lista.filter(
-        p =>
-          String(
-            idLigaHistorica(p)
-          ) ===
-          String(
-            filtroTime.campeonato
-          )
-      );
-  }
-
-  return lista;
+function logoTimeAtual() {
+  return (
+    timeAtual?.logo ||
+    historicoTimeAtual?.team?.logo ||
+    historicoTimeAtual?.time?.logo ||
+    ""
+  );
 }
 
 /* =========================================================
-   FILTROS DO TIME
+   CABEÇALHO DO TIME
 ========================================================= */
 
-function mudarFiltroTimeQuantidade(q) {
-  filtroTime.quantidade =
-    Number(q) === 5
-      ? 5
-      : 10;
+function cabecalhoTime() {
+  const nome =
+    nomeTimeAtual();
 
-  renderPaginaTime();
-}
-
-function mudarFiltroTimeLocal(local) {
-  filtroTime.local =
-    local;
-
-  renderPaginaTime();
-}
-
-function mudarFiltroTimeCampeonato(id) {
-  filtroTime.campeonato =
-    id || "todos";
-
-  renderPaginaTime();
-}
-
-function controlesTime() {
-  const campeonatos =
-    campeonatosTimeSelecionado();
-
-  return `
-    <div
-      style="
-        display:flex;
-        flex-direction:column;
-        gap:9px;
-      "
-    >
-
-      <div
-        style="
-          display:flex;
-          gap:7px;
-          overflow-x:auto;
-        "
-      >
-        ${botao(
-          "Últimos 5",
-          "mudarFiltroTimeQuantidade(5)",
-          filtroTime.quantidade === 5
-        )}
-
-        ${botao(
-          "Últimos 10",
-          "mudarFiltroTimeQuantidade(10)",
-          filtroTime.quantidade === 10
-        )}
-      </div>
-
-      <div
-        style="
-          display:flex;
-          gap:7px;
-          overflow-x:auto;
-        "
-      >
-        ${botao(
-          "Geral",
-          "mudarFiltroTimeLocal('geral')",
-          filtroTime.local === "geral"
-        )}
-
-        ${botao(
-          "Casa",
-          "mudarFiltroTimeLocal('casa')",
-          filtroTime.local === "casa"
-        )}
-
-        ${botao(
-          "Fora",
-          "mudarFiltroTimeLocal('fora')",
-          filtroTime.local === "fora"
-        )}
-      </div>
-
-      <select
-        onchange="mudarFiltroTimeCampeonato(this.value)"
-        style="
-          width:100%;
-          border:1px solid rgba(255,255,255,.12);
-          border-radius:11px;
-          background:#101820;
-          color:#fff;
-          padding:11px;
-          font-weight:800;
-        "
-      >
-        <option value="todos">
-          Todos os campeonatos
-        </option>
-
-        ${
-          campeonatos
-            .map(c => `
-              <option
-                value="${e(c.id)}"
-                ${
-                  String(
-                    filtroTime.campeonato
-                  ) ===
-                  String(c.id)
-                    ? "selected"
-                    : ""
-                }
-              >
-                ${e(c.nome)}
-              </option>
-            `)
-            .join("")
-        }
-
-      </select>
-
-    </div>
-  `;
-}
-
-/* =========================================================
-   RESULTADOS DO TIME
-========================================================= */
-
-function resultadoPartidaTime(p) {
-  const gf =
-    numeroHistorico(
-      p,
-      ["golsFavor", "goalsFor"]
-    );
-
-  const gc =
-    numeroHistorico(
-      p,
-      ["golsContra", "goalsAgainst"]
-    );
-
-  if (gf > gc) {
-    return "V";
-  }
-
-  if (gf < gc) {
-    return "D";
-  }
-
-  return "E";
-}
-
-function corResultadoTime(r) {
-  if (r === "V") {
-    return "#2ee58b";
-  }
-
-  if (r === "D") {
-    return "#ff6262";
-  }
-
-  return "#f1c75b";
-}
-
-function resumoResultadosTime(partidas) {
-  let vitorias = 0;
-  let empates = 0;
-  let derrotas = 0;
-
-  safeArray(partidas)
-    .forEach(p => {
-      const r =
-        resultadoPartidaTime(p);
-
-      if (r === "V") {
-        vitorias++;
-      }
-
-      if (r === "E") {
-        empates++;
-      }
-
-      if (r === "D") {
-        derrotas++;
-      }
-    });
-
-  return {
-    vitorias,
-    empates,
-    derrotas
-  };
-}
-
-/* =========================================================
-   JOGADORES DO TIME
-========================================================= */
-
-function jogadoresDoTimeFiltrado(partidas) {
-  const mapa =
-    new Map();
-
-  safeArray(partidas)
-    .forEach(partida => {
-      safeArray(
-        partida.jogadores
-      ).forEach(j => {
-
-        if (!j.id) {
-          return;
-        }
-
-        const chave =
-          String(j.id);
-
-        if (!mapa.has(chave)) {
-          mapa.set(
-            chave,
-            {
-              id: j.id,
-
-              nome:
-                j.nome ||
-                j.name ||
-                "Jogador",
-
-              foto:
-                j.foto ||
-                j.photo ||
-                `${API}/logo/player/${j.id}`,
-
-              numero:
-                j.numero ??
-                j.number ??
-                "-",
-
-              posicao:
-                j.posicao ||
-                j.position ||
-                "",
-
-              partidas: 0,
-
-              total: {
-                minutos: 0,
-                nota: 0,
-                chutes: 0,
-                chutesGol: 0,
-                gols: 0,
-                assistencias: 0,
-                passes: 0,
-                passesChave: 0,
-                faltasCometidas: 0,
-                faltasSofridas: 0,
-                desarmes: 0,
-                amarelos: 0,
-                vermelhos: 0
-              }
-            }
-          );
-        }
-
-        const item =
-          mapa.get(chave);
-
-        const s =
-          estatisticaJogador(j);
-
-        item.partidas++;
-
-        Object.keys(
-          item.total
-        ).forEach(campo => {
-          item.total[campo] +=
-            n(s[campo]);
-        });
-      });
-    });
-
-  return [...mapa.values()]
-    .map(j => {
-      const medias = {};
-
-      Object.keys(
-        j.total
-      ).forEach(campo => {
-        medias[campo] =
-          j.partidas
-            ? j.total[campo] /
-              j.partidas
-            : 0;
-      });
-
-      return {
-        ...j,
-        medias
-      };
-    });
-}
-
-/* =========================================================
-   CABEÇALHO DA PÁGINA DO TIME
-========================================================= */
-
-function cabecalhoPaginaTime() {
-  const t =
-    timeSelecionado;
+  const logo =
+    logoTimeAtual();
 
   return painel(`
     <div
       style="
         display:flex;
         align-items:center;
-        gap:14px;
+        gap:12px;
       "
     >
-      ${
-        t.logo
-          ? `
-            <img
-              src="${e(t.logo)}"
-              onerror="this.style.display='none'"
-              style="
-                width:72px;
-                height:72px;
-                object-fit:contain;
-              "
-            >
-          `
-          : ""
-      }
+      <button
+        onclick="mostrarHome()"
+        style="
+          width:38px;
+          height:38px;
+          border-radius:11px;
+          border:1px solid rgba(255,255,255,.09);
+          background:rgba(255,255,255,.035);
+          color:#fff;
+          font-size:18px;
+        "
+      >
+        ←
+      </button>
 
-      <div>
+      <div
+        style="
+          width:56px;
+          height:56px;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+        "
+      >
+        ${
+          logo
+            ? `
+              <img
+                src="${e(logo)}"
+                onerror="this.style.display='none'"
+                style="
+                  max-width:100%;
+                  max-height:100%;
+                  object-fit:contain;
+                "
+              >
+            `
+            : ""
+        }
+      </div>
+
+      <div
+        style="
+          min-width:0;
+          flex:1;
+        "
+      >
         <div
           style="
-            font-size:22px;
+            font-size:20px;
             font-weight:950;
+            overflow:hidden;
+            white-space:nowrap;
+            text-overflow:ellipsis;
           "
         >
-          ${e(t.nome)}
-        </div>
-
-        <div
-          style="
-            margin-top:5px;
-            color:#2ee58b;
-            font-size:11px;
-            font-weight:950;
-          "
-        >
-          ANÁLISE DO TIME
+          ${e(nome)}
         </div>
 
         <div
           style="
             margin-top:4px;
-            font-size:11px;
+            font-size:10px;
             opacity:.55;
           "
         >
-          Histórico, médias, tendências e jogadores
+          Estatísticas e histórico
         </div>
       </div>
     </div>
@@ -7732,56 +7726,92 @@ function cabecalhoPaginaTime() {
 }
 
 /* =========================================================
-   RESUMO DA PÁGINA DO TIME
+   RESUMO DA FORMA
 ========================================================= */
 
-function resumoPaginaTime(partidas) {
-  const resumo =
-    resumoHistoricoTime(
-      partidas
-    );
+function resumoTimeAtual() {
+  const partidas =
+    partidasDoTime(10);
 
-  const resultados =
-    resumoResultadosTime(
-      partidas
-    );
+  if (!partidas.length) {
+    return painel(`
+      ${tituloSecao(
+        "Forma recente",
+        "Últimos jogos disponíveis"
+      )}
+
+      <div
+        style="
+          padding:18px;
+          text-align:center;
+          opacity:.6;
+        "
+      >
+        Histórico não disponível.
+      </div>
+    `);
+  }
+
+  let vitorias = 0;
+  let empates = 0;
+  let derrotas = 0;
+  let golsFavor = 0;
+  let golsContra = 0;
+
+  partidas.forEach(p => {
+    const gf =
+      n(p.golsFavor);
+
+    const gc =
+      n(p.golsContra);
+
+    golsFavor += gf;
+    golsContra += gc;
+
+    if (gf > gc) {
+      vitorias++;
+    } else if (gf === gc) {
+      empates++;
+    } else {
+      derrotas++;
+    }
+  });
 
   return painel(`
     ${tituloSecao(
-      "Resumo",
-      `${resumo.quantidade} partida(s) na amostra`
+      "Forma recente",
+      `Últimos ${partidas.length} jogos`
     )}
 
     <div
       style="
         display:grid;
-        grid-template-columns:repeat(3,minmax(0,1fr));
-        gap:7px;
-        margin-bottom:10px;
+        grid-template-columns:repeat(3,1fr);
+        gap:8px;
+        text-align:center;
       "
     >
       <div
         style="
-          padding:10px;
-          border-radius:10px;
-          background:rgba(46,229,139,.08);
-          text-align:center;
+          padding:13px;
+          border-radius:12px;
+          background:rgba(46,229,139,.06);
         "
       >
         <strong
           style="
+            font-size:22px;
             color:#2ee58b;
-            font-size:19px;
           "
         >
-          ${resultados.vitorias}
+          ${vitorias}
         </strong>
 
         <div
           style="
             margin-top:3px;
             font-size:9px;
-            opacity:.6;
+            opacity:.5;
           "
         >
           VITÓRIAS
@@ -7790,26 +7820,24 @@ function resumoPaginaTime(partidas) {
 
       <div
         style="
-          padding:10px;
-          border-radius:10px;
-          background:rgba(241,199,91,.08);
-          text-align:center;
+          padding:13px;
+          border-radius:12px;
+          background:rgba(255,255,255,.035);
         "
       >
         <strong
           style="
-            color:#f1c75b;
-            font-size:19px;
+            font-size:22px;
           "
         >
-          ${resultados.empates}
+          ${empates}
         </strong>
 
         <div
           style="
             margin-top:3px;
             font-size:9px;
-            opacity:.6;
+            opacity:.5;
           "
         >
           EMPATES
@@ -7818,26 +7846,24 @@ function resumoPaginaTime(partidas) {
 
       <div
         style="
-          padding:10px;
-          border-radius:10px;
-          background:rgba(255,98,98,.08);
-          text-align:center;
+          padding:13px;
+          border-radius:12px;
+          background:rgba(255,255,255,.035);
         "
       >
         <strong
           style="
-            color:#ff6262;
-            font-size:19px;
+            font-size:22px;
           "
         >
-          ${resultados.derrotas}
+          ${derrotas}
         </strong>
 
         <div
           style="
             margin-top:3px;
             font-size:9px;
-            opacity:.6;
+            opacity:.5;
           "
         >
           DERROTAS
@@ -7848,336 +7874,513 @@ function resumoPaginaTime(partidas) {
     <div
       style="
         display:grid;
-        grid-template-columns:repeat(2,minmax(0,1fr));
+        grid-template-columns:1fr 1fr;
         gap:8px;
+        margin-top:9px;
       "
     >
-      ${cardMediaHistorica(
-        "Gols marcados",
-        resumo.total.golsFavor,
-        resumo.medias.golsFavor
-      )}
+      <div
+        style="
+          padding:12px;
+          border-radius:11px;
+          background:rgba(255,255,255,.025);
+        "
+      >
+        <div
+          style="
+            font-size:9px;
+            opacity:.5;
+          "
+        >
+          GOLS MARCADOS
+        </div>
 
-      ${cardMediaHistorica(
-        "Gols sofridos",
-        resumo.total.golsContra,
-        resumo.medias.golsContra
-      )}
+        <strong>
+          ${golsFavor}
+        </strong>
 
-      ${cardMediaHistorica(
-        "Chutes",
-        resumo.total.chutes,
-        resumo.medias.chutes
-      )}
+        <span
+          style="
+            font-size:10px;
+            opacity:.5;
+          "
+        >
+          • média
+          ${media(
+            golsFavor,
+            partidas.length
+          )}
+        </span>
+      </div>
 
-      ${cardMediaHistorica(
-        "Chutes no alvo",
-        resumo.total.chutesGol,
-        resumo.medias.chutesGol
-      )}
+      <div
+        style="
+          padding:12px;
+          border-radius:11px;
+          background:rgba(255,255,255,.025);
+        "
+      >
+        <div
+          style="
+            font-size:9px;
+            opacity:.5;
+          "
+        >
+          GOLS SOFRIDOS
+        </div>
 
-      ${cardMediaHistorica(
-        "Escanteios",
-        resumo.total.escanteios,
-        resumo.medias.escanteios
-      )}
+        <strong>
+          ${golsContra}
+        </strong>
 
-      ${cardMediaHistorica(
-        "Faltas",
-        resumo.total.faltas,
-        resumo.medias.faltas
-      )}
-
-      ${cardMediaHistorica(
-        "Amarelos",
-        resumo.total.amarelos,
-        resumo.medias.amarelos
-      )}
-
-      ${cardMediaHistorica(
-        "Vermelhos",
-        resumo.total.vermelhos,
-        resumo.medias.vermelhos
-      )}
+        <span
+          style="
+            font-size:10px;
+            opacity:.5;
+          "
+        >
+          • média
+          ${media(
+            golsContra,
+            partidas.length
+          )}
+        </span>
+      </div>
     </div>
   `);
 }
-  /* =========================================================
-   TENDÊNCIAS DA PÁGINA DO TIME
+/* =========================================================
+   COMPETIÇÕES DO TIME
 ========================================================= */
 
-function tendenciasPaginaTime(partidas) {
-  const tendencias =
-    gerarTendenciasTime(partidas);
+function agruparPartidasTimePorLiga() {
+  const partidas =
+    partidasDoTime(10);
+
+  const mapa =
+    new Map();
+
+  partidas.forEach(p => {
+    const id =
+      idLigaPartidaHistorica(p);
+
+    const nome =
+      nomeLigaPartidaHistorica(p);
+
+    const chave =
+      id ||
+      nome ||
+      "outras";
+
+    if (!mapa.has(chave)) {
+      mapa.set(
+        chave,
+        {
+          id: chave,
+          nome:
+            nome ||
+            "Outras competições",
+          partidas: []
+        }
+      );
+    }
+
+    mapa
+      .get(chave)
+      .partidas
+      .push(p);
+  });
+
+  return [
+    ...mapa.values()
+  ];
+}
+
+/* =========================================================
+   MÉDIAS POR COMPETIÇÃO
+========================================================= */
+
+function cardCompeticaoTime(
+  grupo
+) {
+  const partidas =
+    safeArray(
+      grupo?.partidas
+    );
+
+  let golsFavor = 0;
+  let golsContra = 0;
+  let vitorias = 0;
+  let empates = 0;
+  let derrotas = 0;
+
+  partidas.forEach(p => {
+    const gf =
+      n(p.golsFavor);
+
+    const gc =
+      n(p.golsContra);
+
+    golsFavor += gf;
+    golsContra += gc;
+
+    if (gf > gc) {
+      vitorias++;
+    } else if (gf === gc) {
+      empates++;
+    } else {
+      derrotas++;
+    }
+  });
+
+  return `
+    <div
+      style="
+        padding:13px;
+        border-radius:13px;
+        background:rgba(255,255,255,.025);
+        border:1px solid rgba(255,255,255,.07);
+        margin-top:9px;
+      "
+    >
+      <div
+        style="
+          display:flex;
+          justify-content:space-between;
+          gap:10px;
+          align-items:center;
+        "
+      >
+        <strong
+          style="
+            font-size:13px;
+          "
+        >
+          ${e(
+            grupo?.nome ||
+            "Competição"
+          )}
+        </strong>
+
+        <span
+          style="
+            font-size:9px;
+            opacity:.5;
+          "
+        >
+          ${partidas.length}
+          JOGO(S)
+        </span>
+      </div>
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:repeat(3,1fr);
+          gap:6px;
+          margin-top:11px;
+          text-align:center;
+        "
+      >
+        <div>
+          <strong
+            style="
+              color:#2ee58b;
+            "
+          >
+            ${vitorias}
+          </strong>
+
+          <div
+            style="
+              font-size:8px;
+              opacity:.45;
+            "
+          >
+            VIT
+          </div>
+        </div>
+
+        <div>
+          <strong>
+            ${empates}
+          </strong>
+
+          <div
+            style="
+              font-size:8px;
+              opacity:.45;
+            "
+          >
+            EMP
+          </div>
+        </div>
+
+        <div>
+          <strong>
+            ${derrotas}
+          </strong>
+
+          <div
+            style="
+              font-size:8px;
+              opacity:.45;
+            "
+          >
+            DER
+          </div>
+        </div>
+      </div>
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:1fr 1fr;
+          gap:7px;
+          margin-top:11px;
+        "
+      >
+        <div
+          style="
+            padding:9px;
+            border-radius:9px;
+            background:rgba(46,229,139,.045);
+          "
+        >
+          <div
+            style="
+              font-size:8px;
+              opacity:.5;
+            "
+          >
+            GOLS / JOGO
+          </div>
+
+          <strong
+            style="
+              color:#2ee58b;
+            "
+          >
+            ${media(
+              golsFavor,
+              partidas.length
+            )}
+          </strong>
+        </div>
+
+        <div
+          style="
+            padding:9px;
+            border-radius:9px;
+            background:rgba(255,255,255,.03);
+          "
+        >
+          <div
+            style="
+              font-size:8px;
+              opacity:.5;
+            "
+          >
+            SOFRIDOS / JOGO
+          </div>
+
+          <strong>
+            ${media(
+              golsContra,
+              partidas.length
+            )}
+          </strong>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCompeticoesTime() {
+  const grupos =
+    agruparPartidasTimePorLiga();
 
   return painel(`
     ${tituloSecao(
-      "Tendências",
-      `Frequências históricas ≥ ${CONFIG.frequenciaMinima}%`
+      "Por competição",
+      "Desempenho separado pelos campeonatos presentes na amostra"
     )}
 
     ${
-      tendencias.length
-        ? tendencias
-            .slice(0, 20)
-            .map(t => `
-              <div
-                style="
-                  padding:12px 0;
-                  border-bottom:1px solid rgba(255,255,255,.07);
-                "
-              >
-                <div
-                  style="
-                    display:flex;
-                    justify-content:space-between;
-                    gap:10px;
-                    align-items:center;
-                  "
-                >
-                  <strong>
-                    ${e(t.mercado)}
-                    • ${e(t.tipo)}
-                    ${e(t.linha)}
-                  </strong>
-
-                  <strong
-                    style="
-                      color:#2ee58b;
-                      white-space:nowrap;
-                    "
-                  >
-                    ${t.percentual}%
-                  </strong>
-                </div>
-
-                <div
-                  style="
-                    margin-top:5px;
-                    display:flex;
-                    justify-content:space-between;
-                    gap:10px;
-                    font-size:11px;
-                    opacity:.6;
-                  "
-                >
-                  <span>
-                    ${t.acertos}/${t.total}
-                    jogos
-                  </span>
-
-                  <span>
-                    Média:
-                    ${n(t.media).toFixed(1)}
-                  </span>
-                </div>
-              </div>
-            `)
+      grupos.length
+        ? grupos
+            .map(
+              cardCompeticaoTime
+            )
             .join("")
         : `
           <div
             style="
               padding:18px;
               text-align:center;
-              opacity:.65;
+              opacity:.6;
             "
           >
-            Nenhuma tendência ≥
-            ${CONFIG.frequenciaMinima}%
-            nesta amostra.
+            Nenhuma competição encontrada.
           </div>
         `
     }
-
-    <div
-      style="
-        margin-top:12px;
-        font-size:10px;
-        opacity:.5;
-        line-height:1.5;
-      "
-    >
-      Os percentuais representam frequência histórica
-      na amostra selecionada e não garantia de ocorrência
-      na próxima partida.
-    </div>
   `);
 }
 
 /* =========================================================
-   JOGO A JOGO — PÁGINA DO TIME
+   ÚLTIMOS JOGOS DO TIME
 ========================================================= */
 
-function jogoPaginaTime(p) {
-  const s =
-    estatisticasPartidaHistorica(p);
+function cardPartidaTime(
+  p
+) {
+  const adversario =
+    p.adversario?.name ||
+    p.adversario?.nome ||
+    p.adversario ||
+    "Adversário";
 
-  const resultado =
-    resultadoPartidaTime(p);
+  const gf =
+    n(p.golsFavor);
+
+  const gc =
+    n(p.golsContra);
+
+  let resultado = "E";
+
+  if (gf > gc) {
+    resultado = "V";
+  } else if (gf < gc) {
+    resultado = "D";
+  }
+
+  const corResultado =
+    resultado === "V"
+      ? "#2ee58b"
+      : resultado === "D"
+        ? "#ff6b6b"
+        : "#d7d7d7";
 
   return `
-    <div
+    <button
+      ${
+        p.fixtureId
+          ? `onclick="abrirJogo(${Number(
+              p.fixtureId
+            )})"`
+          : ""
+      }
       style="
-        padding:13px 0;
-        border-bottom:1px solid rgba(255,255,255,.07);
+        width:100%;
+        display:grid;
+        grid-template-columns:35px 1fr auto;
+        gap:9px;
+        align-items:center;
+        padding:11px 4px;
+        border:0;
+        border-bottom:1px solid rgba(255,255,255,.06);
+        background:transparent;
+        color:#fff;
+        text-align:left;
       "
     >
       <div
         style="
-          display:grid;
-          grid-template-columns:1fr auto;
-          gap:10px;
+          width:28px;
+          height:28px;
+          border-radius:8px;
+          display:flex;
           align-items:center;
+          justify-content:center;
+          background:${corResultado}18;
+          color:${corResultado};
+          font-size:11px;
+          font-weight:950;
         "
       >
-        <div>
-          <div
-            style="
-              font-weight:950;
-            "
-          >
-            ${
-              partidaEhCasa(p)
-                ? "vs"
-                : "@"
-            }
-            ${e(
-              p.adversario?.name ||
-              p.adversario ||
-              "Adversário"
-            )}
-          </div>
+        ${resultado}
+      </div>
 
-          <div
-            style="
-              margin-top:4px;
-              font-size:10px;
-              opacity:.55;
-            "
-          >
-            ${e(dataCurta(p.data))}
-            •
-            ${e(nomeLigaHistorica(p))}
-            •
-            ${
-              partidaEhCasa(p)
-                ? "Casa"
-                : partidaEhFora(p)
-                  ? "Fora"
-                  : "Geral"
-            }
-          </div>
+      <div
+        style="
+          min-width:0;
+        "
+      >
+        <div
+          style="
+            font-size:12px;
+            font-weight:850;
+            overflow:hidden;
+            white-space:nowrap;
+            text-overflow:ellipsis;
+          "
+        >
+          ${e(adversario)}
         </div>
 
         <div
           style="
-            display:flex;
-            gap:7px;
-            align-items:center;
+            margin-top:3px;
+            font-size:9px;
+            opacity:.45;
           "
         >
-          <strong
-            style="
-              font-size:16px;
-            "
-          >
-            ${s.golsFavor}
-            -
-            ${s.golsContra}
-          </strong>
-
-          <span
-            style="
-              width:28px;
-              height:28px;
-              border-radius:8px;
-              display:flex;
-              align-items:center;
-              justify-content:center;
-              background:${corResultadoTime(resultado)};
-              color:#07120d;
-              font-weight:950;
-            "
-          >
-            ${resultado}
-          </span>
+          ${e(
+            dataCurta(p.data)
+          )}
+          •
+          ${e(
+            nomeLigaPartidaHistorica(
+              p
+            )
+          )}
+          •
+          ${e(
+            p.local ||
+            ""
+          )}
         </div>
       </div>
 
       <div
         style="
-          display:grid;
-          grid-template-columns:repeat(4,minmax(0,1fr));
-          gap:6px;
-          margin-top:10px;
+          font-size:15px;
+          font-weight:950;
         "
       >
-        ${miniValorJogo(
-          "Chutes",
-          s.chutes
-        )}
-
-        ${miniValorJogo(
-          "No alvo",
-          s.chutesGol
-        )}
-
-        ${miniValorJogo(
-          "Escanteios",
-          s.escanteios
-        )}
-
-        ${miniValorJogo(
-          "Faltas",
-          s.faltas
-        )}
-
-        ${miniValorJogo(
-          "Amarelos",
-          s.amarelos
-        )}
-
-        ${miniValorJogo(
-          "Vermelhos",
-          s.vermelhos
-        )}
-
-        ${miniValorJogo(
-          "Gols pró",
-          s.golsFavor
-        )}
-
-        ${miniValorJogo(
-          "Gols contra",
-          s.golsContra
-        )}
+        ${gf} - ${gc}
       </div>
-    </div>
+    </button>
   `;
 }
 
-function jogosPaginaTime(partidas) {
+function renderUltimosJogosTime() {
+  const partidas =
+    partidasDoTime(10);
+
   return painel(`
     ${tituloSecao(
       "Últimos jogos",
-      "Dados jogo a jogo da amostra selecionada"
+      "Partidas mais recentes disponíveis"
     )}
 
     ${
       partidas.length
         ? partidas
-            .map(jogoPaginaTime)
+            .map(
+              cardPartidaTime
+            )
             .join("")
         : `
           <div
             style="
               padding:18px;
               text-align:center;
-              opacity:.65;
+              opacity:.6;
             "
           >
-            Nenhuma partida encontrada
-            com estes filtros.
+            Nenhuma partida encontrada.
           </div>
         `
     }
@@ -8185,457 +8388,1127 @@ function jogosPaginaTime(partidas) {
 }
 
 /* =========================================================
-   RANKING DE JOGADORES — PÁGINA DO TIME
+   RENDER PÁGINA DO TIME
 ========================================================= */
 
-let criterioRankingTime =
-  "chutes";
-
-function mudarCriterioRankingTime(
-  criterio
-) {
-  if (
-    CRITERIOS_RANKING[
-      criterio
-    ]
-  ) {
-    criterioRankingTime =
-      criterio;
-  }
-
-  renderPaginaTime();
-}
-
-function rankingJogadoresTime(
-  partidas
-) {
-  const jogadores =
-    jogadoresDoTimeFiltrado(
-      partidas
+function renderPaginaTime() {
+  const container =
+    document.getElementById(
+      "games"
+    ) ||
+    document.getElementById(
+      "list"
+    ) ||
+    document.getElementById(
+      "app"
     );
 
-  const criterio =
-    CRITERIOS_RANKING[
-      criterioRankingTime
-    ] ||
-    CRITERIOS_RANKING.chutes;
+  if (!container) {
+    return;
+  }
 
-  return jogadores.sort(
-    (a, b) =>
-      n(
-        b.medias?.[
-          criterio.campo
-        ]
-      ) -
-      n(
-        a.medias?.[
-          criterio.campo
-        ]
-      )
+  container.innerHTML = `
+    <div
+      style="
+        max-width:760px;
+        margin:0 auto;
+        padding-bottom:40px;
+      "
+    >
+      ${cabecalhoTime()}
+      ${resumoTimeAtual()}
+      ${renderCompeticoesTime()}
+      ${renderUltimosJogosTime()}
+    </div>
+  `;
+
+  window.scrollTo({
+    top: 0,
+    behavior: "instant"
+  });
+}
+/* =========================================================
+   PÁGINA INDIVIDUAL DO JOGADOR
+========================================================= */
+
+let jogadorAtual = null;
+let historicoJogadorAtual = [];
+let filtroJogadorQuantidade = 5;
+
+function localizarJogadorHistorico(
+  jogadorId
+) {
+  const id =
+    Number(jogadorId);
+
+  const lados = [
+    historicoAtual?.casa,
+    historicoAtual?.fora
+  ];
+
+  for (const lado of lados) {
+    for (
+      const quantidade of [
+        "ultimas5",
+        "ultimas10"
+      ]
+    ) {
+      const jogadores =
+        safeArray(
+          lado?.[quantidade]
+            ?.jogadores
+        );
+
+      const encontrado =
+        jogadores.find(j =>
+          Number(j.id) === id
+        );
+
+      if (encontrado) {
+        return encontrado;
+      }
+    }
+  }
+
+  return null;
+}
+
+function localizarJogadorPartida(
+  jogadorId
+) {
+  const id =
+    Number(jogadorId);
+
+  const jogadores =
+    extrairJogadoresPartida();
+
+  for (const bloco of jogadores) {
+    const lista =
+      safeArray(
+        bloco?.players ||
+        bloco?.jogadores
+      );
+
+    const encontrado =
+      lista.find(item => {
+        const player =
+          item?.player ||
+          item?.jogador ||
+          item;
+
+        return (
+          Number(player?.id) ===
+          id
+        );
+      });
+
+    if (encontrado) {
+      return normalizarJogadorPartida(
+        encontrado
+      );
+    }
+  }
+
+  return null;
+}
+
+function montarHistoricoJogador(
+  jogadorId
+) {
+  const id =
+    Number(jogadorId);
+
+  const resultado = [];
+
+  const lados = [
+    historicoAtual?.casa,
+    historicoAtual?.fora,
+    historicoTimeAtual
+  ];
+
+  lados.forEach(lado => {
+    const partidas =
+      safeArray(
+        lado?.ultimas10
+          ?.partidas ||
+        lado?.historico
+          ?.ultimas10
+          ?.partidas ||
+        lado?.partidas
+      );
+
+    partidas.forEach(p => {
+      const jogadores =
+        safeArray(
+          p?.jogadores
+        );
+
+      const j =
+        jogadores.find(item =>
+          Number(
+            item?.id ||
+            item?.player?.id
+          ) === id
+        );
+
+      if (!j) {
+        return;
+      }
+
+      resultado.push({
+        fixtureId:
+          p.fixtureId ||
+          p.id,
+
+        data:
+          p.data ||
+          p.date,
+
+        adversario:
+          p.adversario,
+
+        liga:
+          p.liga,
+
+        local:
+          p.local,
+
+        golsFavor:
+          p.golsFavor,
+
+        golsContra:
+          p.golsContra,
+
+        jogador:
+          j
+      });
+    });
+  });
+
+  const unicos =
+    new Map();
+
+  resultado.forEach(item => {
+    const chave =
+      item.fixtureId ||
+      `${item.data}-${item.adversario}`;
+
+    if (!unicos.has(chave)) {
+      unicos.set(
+        chave,
+        item
+      );
+    }
+  });
+
+  return [
+    ...unicos.values()
+  ];
+}
+
+function abrirJogador(
+  jogadorId
+) {
+  const id =
+    Number(jogadorId);
+
+  if (!id) {
+    return;
+  }
+
+  const partida =
+    localizarJogadorPartida(
+      id
+    );
+
+  const historico =
+    localizarJogadorHistorico(
+      id
+    );
+
+  jogadorAtual =
+    partida ||
+    historico ||
+    {
+      id,
+      nome:
+        `Jogador ${id}`,
+      foto:
+        fotoJogador(id)
+    };
+
+  jogadorAtual.id =
+    jogadorAtual.id ||
+    id;
+
+  jogadorAtual.foto =
+    jogadorAtual.foto ||
+    fotoJogador(id);
+
+  historicoJogadorAtual =
+    montarHistoricoJogador(
+      id
+    );
+
+  filtroJogadorQuantidade =
+    5;
+
+  const url =
+    new URL(
+      window.location.href
+    );
+
+  url.searchParams.delete(
+    "jogo"
+  );
+
+  url.searchParams.delete(
+    "time"
+  );
+
+  url.searchParams.set(
+    "jogador",
+    id
+  );
+
+  window.history.pushState(
+    {},
+    "",
+    url.pathname +
+      url.search
+  );
+
+  renderPaginaJogador();
+}
+
+/* =========================================================
+   FILTRO L5 / L10
+========================================================= */
+
+function mudarFiltroJogador(
+  quantidade
+) {
+  filtroJogadorQuantidade =
+    Number(quantidade) === 10
+      ? 10
+      : 5;
+
+  renderPaginaJogador();
+}
+
+function partidasJogadorFiltradas() {
+  return safeArray(
+    historicoJogadorAtual
+  ).slice(
+    0,
+    filtroJogadorQuantidade
   );
 }
 
-function cardJogadorTime(
-  jogador,
-  posicao
-) {
-  const criterio =
-    CRITERIOS_RANKING[
-      criterioRankingTime
-    ] ||
-    CRITERIOS_RANKING.chutes;
+/* =========================================================
+   CABEÇALHO DO JOGADOR
+========================================================= */
 
-  const campo =
-    criterio.campo;
+function cabecalhoJogador() {
+  const nome =
+    jogadorAtual?.nome ||
+    jogadorAtual?.name ||
+    "Jogador";
 
   const foto =
-    fotoJogador(jogador);
+    jogadorAtual?.foto ||
+    fotoJogador(
+      jogadorAtual?.id
+    );
 
-  return `
+  const posicao =
+    jogadorAtual?.posicao ||
+    jogadorAtual?.position ||
+    "-";
+
+  const numero =
+    jogadorAtual?.numero ??
+    jogadorAtual?.number ??
+    null;
+
+  return painel(`
     <div
-      onclick="abrirJogador(${Number(jogador.id)})"
       style="
-        padding:11px;
-        border-radius:13px;
-        background:rgba(255,255,255,.035);
-        border:1px solid rgba(255,255,255,.07);
-        cursor:pointer;
+        display:flex;
+        align-items:center;
+        gap:13px;
       "
     >
+      <button
+        onclick="voltarDoJogador()"
+        style="
+          width:38px;
+          height:38px;
+          flex:0 0 38px;
+          border-radius:11px;
+          border:1px solid rgba(255,255,255,.09);
+          background:rgba(255,255,255,.035);
+          color:#fff;
+          font-size:18px;
+        "
+      >
+        ←
+      </button>
+
       <div
         style="
-          display:grid;
-          grid-template-columns:28px 45px 1fr auto;
-          gap:8px;
-          align-items:center;
+          width:68px;
+          height:68px;
+          flex:0 0 68px;
+          border-radius:50%;
+          overflow:hidden;
+          background:rgba(255,255,255,.04);
+        "
+      >
+        <img
+          src="${e(foto)}"
+          onerror="this.style.display='none'"
+          style="
+            width:100%;
+            height:100%;
+            object-fit:cover;
+          "
+        >
+      </div>
+
+      <div
+        style="
+          min-width:0;
+          flex:1;
         "
       >
         <div
           style="
+            font-size:19px;
             font-weight:950;
-            color:#2ee58b;
-            text-align:center;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
           "
         >
-          ${posicao}
-        </div>
-
-        ${
-          foto
-            ? `
-              <img
-                src="${e(foto)}"
-                onerror="this.style.display='none'"
-                style="
-                  width:45px;
-                  height:45px;
-                  border-radius:50%;
-                  object-fit:cover;
-                "
-              >
-            `
-            : `
-              <div
-                style="
-                  width:45px;
-                  height:45px;
-                  border-radius:50%;
-                  display:flex;
-                  align-items:center;
-                  justify-content:center;
-                  background:rgba(255,255,255,.06);
-                  font-weight:900;
-                "
-              >
-                ${e(jogador.numero)}
-              </div>
-            `
-        }
-
-        <div
-          style="
-            min-width:0;
-          "
-        >
-          <div
-            style="
-              font-weight:900;
-              white-space:nowrap;
-              overflow:hidden;
-              text-overflow:ellipsis;
-            "
-          >
-            ${e(jogador.nome)}
-          </div>
-
-          <div
-            style="
-              margin-top:3px;
-              font-size:10px;
-              opacity:.55;
-            "
-          >
-            ${jogador.partidas}
-            jogo(s)
-            ${
-              jogador.numero !== "-"
-                ? ` • #${e(jogador.numero)}`
-                : ""
-            }
-          </div>
+          ${e(nome)}
         </div>
 
         <div
           style="
-            text-align:right;
+            margin-top:5px;
+            font-size:10px;
+            opacity:.55;
           "
         >
-          <strong
-            style="
-              color:#2ee58b;
-              font-size:17px;
-            "
-          >
-            ${n(
-              jogador.medias?.[
-                campo
-              ]
-            ).toFixed(1)}
-          </strong>
-
-          <div
-            style="
-              margin-top:2px;
-              font-size:9px;
-              opacity:.5;
-            "
-          >
-            média
-          </div>
+          ${
+            numero != null
+              ? `#${e(numero)} • `
+              : ""
+          }
+          ${e(posicao)}
         </div>
+      </div>
+    </div>
+  `);
+}
+
+function voltarDoJogador() {
+  const url =
+    new URL(
+      window.location.href
+    );
+
+  url.searchParams.delete(
+    "jogador"
+  );
+
+  window.history.pushState(
+    {},
+    "",
+    url.pathname +
+      url.search
+  );
+
+  if (partidaAtual) {
+    renderPaginaPartida();
+    return;
+  }
+
+  if (timeAtual) {
+    renderPaginaTime();
+    return;
+  }
+
+  mostrarHome();
+}
+/* =========================================================
+   ESTATÍSTICAS DO JOGADOR
+========================================================= */
+
+function statsJogadorItem(
+  item
+) {
+  return (
+    item?.jogador ||
+    item ||
+    {}
+  );
+}
+
+function somarCampoJogador(
+  partidas,
+  campo
+) {
+  return safeArray(partidas)
+    .reduce(
+      (total, item) => {
+        const j =
+          statsJogadorItem(
+            item
+          );
+
+        return (
+          total +
+          n(j?.[campo])
+        );
+      },
+      0
+    );
+}
+
+function mediaCampoJogador(
+  partidas,
+  campo
+) {
+  const lista =
+    safeArray(partidas);
+
+  if (!lista.length) {
+    return "0.00";
+  }
+
+  return (
+    somarCampoJogador(
+      lista,
+      campo
+    ) /
+    lista.length
+  ).toFixed(2);
+}
+
+function cardMediaJogador(
+  titulo,
+  valor,
+  destaque = false
+) {
+  return `
+    <div
+      style="
+        padding:11px 8px;
+        border-radius:11px;
+        background:${
+          destaque
+            ? "rgba(46,229,139,.055)"
+            : "rgba(255,255,255,.03)"
+        };
+        text-align:center;
+      "
+    >
+      <strong
+        style="
+          display:block;
+          font-size:17px;
+          color:${
+            destaque
+              ? "#2ee58b"
+              : "#fff"
+          };
+        "
+      >
+        ${e(valor)}
+      </strong>
+
+      <div
+        style="
+          margin-top:4px;
+          font-size:8px;
+          opacity:.5;
+        "
+      >
+        ${e(titulo)}
       </div>
     </div>
   `;
 }
 
-function jogadoresPaginaTime(
-  partidas
-) {
-  const ranking =
-    rankingJogadoresTime(
-      partidas
-    );
+function renderMediasJogador() {
+  const partidas =
+    partidasJogadorFiltradas();
 
   return painel(`
     ${tituloSecao(
-      "Jogadores",
-      "Ranking pela média na amostra selecionada"
+      "Médias do jogador",
+      `Base: últimos ${partidas.length} jogos disponíveis`
     )}
-
-    <select
-      onchange="mudarCriterioRankingTime(this.value)"
-      style="
-        width:100%;
-        border:1px solid rgba(255,255,255,.12);
-        border-radius:11px;
-        background:#101820;
-        color:#fff;
-        padding:11px;
-        font-weight:800;
-        margin-bottom:12px;
-      "
-    >
-      ${
-        Object.entries(
-          CRITERIOS_RANKING
-        )
-          .map(
-            ([id, c]) => `
-              <option
-                value="${e(id)}"
-                ${
-                  criterioRankingTime ===
-                  id
-                    ? "selected"
-                    : ""
-                }
-              >
-                ${e(c.nome)}
-              </option>
-            `
-          )
-          .join("")
-      }
-    </select>
 
     <div
       style="
         display:flex;
-        flex-direction:column;
         gap:7px;
+        margin-bottom:12px;
       "
     >
-      ${
-        ranking.length
-          ? ranking
-              .slice(0, 25)
-              .map(
-                (j, i) =>
-                  cardJogadorTime(
-                    j,
-                    i + 1
-                  )
-              )
-              .join("")
-          : `
-            <div
-              style="
-                padding:18px;
-                text-align:center;
-                opacity:.65;
-              "
-            >
-              Nenhum jogador encontrado
-              nesta amostra.
-            </div>
-          `
-      }
+      ${botao(
+        "Últimos 5",
+        "mudarFiltroJogador(5)",
+        filtroJogadorQuantidade === 5
+      )}
+
+      ${botao(
+        "Últimos 10",
+        "mudarFiltroJogador(10)",
+        filtroJogadorQuantidade === 10
+      )}
     </div>
+
+    ${
+      partidas.length
+        ? `
+          <div
+            style="
+              display:grid;
+              grid-template-columns:repeat(3,1fr);
+              gap:7px;
+            "
+          >
+            ${cardMediaJogador(
+              "CHUTES",
+              mediaCampoJogador(
+                partidas,
+                "chutes"
+              ),
+              true
+            )}
+
+            ${cardMediaJogador(
+              "NO ALVO",
+              mediaCampoJogador(
+                partidas,
+                "chutesGol"
+              ),
+              true
+            )}
+
+            ${cardMediaJogador(
+              "GOLS",
+              mediaCampoJogador(
+                partidas,
+                "gols"
+              )
+            )}
+
+            ${cardMediaJogador(
+              "ASSIST.",
+              mediaCampoJogador(
+                partidas,
+                "assistencias"
+              )
+            )}
+
+            ${cardMediaJogador(
+              "FALTAS",
+              mediaCampoJogador(
+                partidas,
+                "faltasCometidas"
+              )
+            )}
+
+            ${cardMediaJogador(
+              "SOFREU FALTA",
+              mediaCampoJogador(
+                partidas,
+                "faltasSofridas"
+              )
+            )}
+
+            ${cardMediaJogador(
+              "DESARMES",
+              mediaCampoJogador(
+                partidas,
+                "desarmes"
+              )
+            )}
+
+            ${cardMediaJogador(
+              "PASSES",
+              mediaCampoJogador(
+                partidas,
+                "passes"
+              )
+            )}
+
+            ${cardMediaJogador(
+              "MINUTOS",
+              mediaCampoJogador(
+                partidas,
+                "minutos"
+              )
+            )}
+          </div>
+        `
+        : `
+          <div
+            style="
+              padding:20px;
+              text-align:center;
+              opacity:.6;
+            "
+          >
+            Histórico individual
+            não disponível.
+          </div>
+        `
+    }
   `);
 }
 
 /* =========================================================
-   RENDERIZA PÁGINA COMPLETA DO TIME
+   HISTÓRICO JOGO A JOGO
 ========================================================= */
 
-function renderPaginaTime() {
-  if (!timeSelecionado) {
-    renderPaginaPartida();
+function cardHistoricoJogador(
+  item
+) {
+  const j =
+    statsJogadorItem(
+      item
+    );
+
+  const adversario =
+    item?.adversario?.name ||
+    item?.adversario?.nome ||
+    item?.adversario ||
+    "Adversário";
+
+  return `
+    <div
+      style="
+        padding:12px 0;
+        border-bottom:1px solid rgba(255,255,255,.06);
+      "
+    >
+      <div
+        style="
+          display:flex;
+          justify-content:space-between;
+          gap:10px;
+          align-items:center;
+        "
+      >
+        <div
+          style="
+            min-width:0;
+          "
+        >
+          <strong
+            style="
+              display:block;
+              font-size:12px;
+              overflow:hidden;
+              white-space:nowrap;
+              text-overflow:ellipsis;
+            "
+          >
+            ${e(adversario)}
+          </strong>
+
+          <div
+            style="
+              margin-top:3px;
+              font-size:8px;
+              opacity:.45;
+            "
+          >
+            ${e(
+              dataCurta(
+                item?.data
+              )
+            )}
+            •
+            ${e(
+              item?.liga?.name ||
+              item?.liga?.nome ||
+              item?.liga ||
+              ""
+            )}
+            •
+            ${e(
+              item?.local ||
+              ""
+            )}
+          </div>
+        </div>
+
+        ${
+          item?.golsFavor != null
+            ? `
+              <strong
+                style="
+                  font-size:13px;
+                "
+              >
+                ${n(item.golsFavor)}
+                -
+                ${n(item.golsContra)}
+              </strong>
+            `
+            : ""
+        }
+      </div>
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:repeat(4,1fr);
+          gap:5px;
+          margin-top:10px;
+          text-align:center;
+        "
+      >
+        <div>
+          <strong>
+            ${n(j.chutes)}
+          </strong>
+          <div
+            style="
+              font-size:7px;
+              opacity:.45;
+            "
+          >
+            CHUTES
+          </div>
+        </div>
+
+        <div>
+          <strong
+            style="
+              color:#2ee58b;
+            "
+          >
+            ${n(j.chutesGol)}
+          </strong>
+          <div
+            style="
+              font-size:7px;
+              opacity:.45;
+            "
+          >
+            NO ALVO
+          </div>
+        </div>
+
+        <div>
+          <strong>
+            ${n(j.faltasCometidas)}
+          </strong>
+          <div
+            style="
+              font-size:7px;
+              opacity:.45;
+            "
+          >
+            FALTAS
+          </div>
+        </div>
+
+        <div>
+          <strong>
+            ${n(j.desarmes)}
+          </strong>
+          <div
+            style="
+              font-size:7px;
+              opacity:.45;
+            "
+          >
+            DESARMES
+          </div>
+        </div>
+      </div>
+
+      <div
+        style="
+          margin-top:7px;
+          font-size:9px;
+          opacity:.55;
+        "
+      >
+        ${n(j.gols)} gol(s)
+        •
+        ${n(j.assistencias)} assistência(s)
+        •
+        ${n(j.minutos)} min
+      </div>
+    </div>
+  `;
+}
+
+function renderHistoricoJogador() {
+  const partidas =
+    partidasJogadorFiltradas();
+
+  return painel(`
+    ${tituloSecao(
+      "Últimas partidas",
+      "Desempenho individual jogo a jogo"
+    )}
+
+    ${
+      partidas.length
+        ? partidas
+            .map(
+              cardHistoricoJogador
+            )
+            .join("")
+        : `
+          <div
+            style="
+              padding:20px;
+              text-align:center;
+              opacity:.6;
+            "
+          >
+            Nenhuma partida individual
+            encontrada na amostra.
+          </div>
+        `
+    }
+  `);
+}
+
+/* =========================================================
+   RENDER PÁGINA DO JOGADOR
+========================================================= */
+
+function renderPaginaJogador() {
+  const container =
+    document.getElementById(
+      "games"
+    ) ||
+    document.getElementById(
+      "list"
+    ) ||
+    document.getElementById(
+      "app"
+    );
+
+  if (!container) {
     return;
   }
 
-  const partidas =
-    partidasFiltradasTime();
-
-  document.body.innerHTML = `
-    <main
+  container.innerHTML = `
+    <div
       style="
-        width:min(100% - 20px,800px);
-        margin:auto;
-        padding:12px 0 30px;
+        max-width:760px;
+        margin:0 auto;
+        padding-bottom:40px;
       "
     >
-      <button
-        onclick="renderPaginaPartida()"
+      ${cabecalhoJogador()}
+      ${renderMediasJogador()}
+      ${renderHistoricoJogador()}
+    </div>
+  `;
+
+  window.scrollTo({
+    top:0,
+    behavior:"instant"
+  });
+}
+/* =========================================================
+   NAVEGAÇÃO DO NAVEGADOR
+========================================================= */
+
+window.addEventListener(
+  "popstate",
+  () => {
+    iniciarAplicacao();
+  }
+);
+
+/* =========================================================
+   ROTA INICIAL
+========================================================= */
+
+async function iniciarAplicacao() {
+  pararAtualizacaoPartida();
+
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
+
+  const jogoId =
+    Number(
+      params.get("jogo")
+    );
+
+  const timeId =
+    Number(
+      params.get("time")
+    );
+
+  const jogadorId =
+    Number(
+      params.get("jogador")
+    );
+
+  /*
+    PRIORIDADE:
+    1. PARTIDA
+    2. TIME
+    3. JOGADOR
+    4. HOME
+  */
+
+  if (jogoId) {
+    await abrirJogo(
+      jogoId,
+      false
+    );
+
+    iniciarAtualizacaoPartida();
+    return;
+  }
+
+  if (timeId) {
+    await abrirTime(
+      timeId
+    );
+
+    return;
+  }
+
+  if (jogadorId) {
+    /*
+      Jogador depende de dados
+      previamente carregados.
+
+      Se houver contexto disponível,
+      abre normalmente.
+    */
+
+    const encontrado =
+      localizarJogadorPartida(
+        jogadorId
+      ) ||
+      localizarJogadorHistorico(
+        jogadorId
+      );
+
+    if (encontrado) {
+      abrirJogador(
+        jogadorId
+      );
+
+      return;
+    }
+  }
+
+  await carregarHome();
+}
+
+/* =========================================================
+   CARREGAMENTO DA HOME
+========================================================= */
+
+async function carregarHome() {
+  const container =
+    document.getElementById(
+      "games"
+    ) ||
+    document.getElementById(
+      "list"
+    ) ||
+    document.getElementById(
+      "app"
+    );
+
+  if (container) {
+    container.innerHTML = `
+      <div
         style="
-          border:0;
-          padding:11px 14px;
-          border-radius:11px;
-          background:rgba(255,255,255,.07);
-          color:#fff;
-          font-weight:900;
-          margin-bottom:12px;
+          padding:35px 15px;
+          text-align:center;
+          opacity:.7;
         "
       >
-        ← Voltar para partida
-      </button>
-
-      ${cabecalhoPaginaTime()}
-
-      ${painel(`
-        ${tituloSecao(
-          "Filtros",
-          "Escolha a amostra usada nos cálculos."
-        )}
-
-        ${controlesTime()}
-      `)}
-
-      ${resumoPaginaTime(
-        partidas
-      )}
-
-      ${tendenciasPaginaTime(
-        partidas
-      )}
-
-      ${jogosPaginaTime(
-        partidas
-      )}
-
-      ${jogadoresPaginaTime(
-        partidas
-      )}
-
-    </main>
-  `;
-}
-  /* =========================================================
-   CONTROLE DE NAVEGAÇÃO
-========================================================= */
-
-function voltarInicio() {
-  partidaAtual = null;
-  historicoAtual = null;
-  jogadorSelecionado = null;
-  timeSelecionado = null;
-  abaAtual = "resumo";
-
-  load();
-}
-
-function abrirAbaPartida(aba) {
-  abaAtual = aba;
-  renderPaginaPartida();
-}
-
-/* =========================================================
-   TRATAMENTO GLOBAL DE ERROS
-========================================================= */
-
-window.addEventListener(
-  "error",
-  event => {
-    console.error(
-      "Erro Profianalises:",
-      event.error ||
-      event.message
-    );
+        Carregando jogos...
+      </div>
+    `;
   }
-);
 
-window.addEventListener(
-  "unhandledrejection",
-  event => {
+  try {
+    await load();
+
+    render(jogos);
+
+    configurarBuscaHome();
+  } catch (erro) {
     console.error(
-      "Erro assíncrono Profianalises:",
-      event.reason
+      "Erro ao carregar home:",
+      erro
     );
+
+    if (container) {
+      container.innerHTML = `
+        <div
+          style="
+            padding:30px 15px;
+            text-align:center;
+          "
+        >
+          <strong>
+            Não foi possível carregar
+            os jogos.
+          </strong>
+
+          <div
+            style="
+              margin-top:8px;
+              font-size:10px;
+              opacity:.55;
+            "
+          >
+            Verifique a conexão com
+            a API e tente novamente.
+          </div>
+
+          <div
+            style="
+              margin-top:15px;
+            "
+          >
+            <button
+              onclick="carregarHome()"
+              style="
+                padding:10px 15px;
+                border:0;
+                border-radius:10px;
+                background:#2ee58b;
+                color:#07130d;
+                font-weight:950;
+              "
+            >
+              Tentar novamente
+            </button>
+          </div>
+        </div>
+      `;
+    }
   }
-);
-
-/* =========================================================
-   EXPÕE FUNÇÕES USADAS PELO HTML
-========================================================= */
-
-window.load = load;
-window.abrirJogo = abrirJogo;
-window.abrirAbaPartida = abrirAbaPartida;
-window.voltarInicio = voltarInicio;
-
-window.abrirJogador = abrirJogador;
-window.abrirTime = abrirTime;
-
-window.renderPaginaPartida =
-  renderPaginaPartida;
-
-window.renderPaginaJogador =
-  renderPaginaJogador;
-
-window.renderPaginaTime =
-  renderPaginaTime;
-
-window.mudarQuantidadeHistorico =
-  mudarQuantidadeHistorico;
-
-window.mudarLocalHistorico =
-  mudarLocalHistorico;
-
-window.mudarCampeonatoHistorico =
-  mudarCampeonatoHistorico;
-
-window.mudarFiltroH2H =
-  mudarFiltroH2H;
-
-window.mudarFiltroJogadorQuantidade =
-  mudarFiltroJogadorQuantidade;
-
-window.mudarFiltroJogadorLocal =
-  mudarFiltroJogadorLocal;
-
-window.mudarFiltroJogadorCampeonato =
-  mudarFiltroJogadorCampeonato;
-
-window.mudarRankingLado =
-  mudarRankingLado;
-
-window.mudarRankingQuantidade =
-  mudarRankingQuantidade;
-
-window.mudarRankingCriterio =
-  mudarRankingCriterio;
-
-window.mudarFiltroTimeQuantidade =
-  mudarFiltroTimeQuantidade;
-
-window.mudarFiltroTimeLocal =
-  mudarFiltroTimeLocal;
-
-window.mudarFiltroTimeCampeonato =
-  mudarFiltroTimeCampeonato;
-
-window.mudarCriterioRankingTime =
-  mudarCriterioRankingTime;
+}
 
 /* =========================================================
    INICIALIZAÇÃO
@@ -8643,29 +9516,7 @@ window.mudarCriterioRankingTime =
 
 document.addEventListener(
   "DOMContentLoaded",
-  async () => {
-    try {
-      const params =
-        new URLSearchParams(
-          window.location.search
-        );
-
-      const jogoId =
-        Number(params.get("jogo"));
-
-      if (jogoId) {
-        await abrirJogo(jogoId);
-      } else {
-        await load();
-      }
-
-    } catch (erro) {
-      console.error(
-        "Falha ao iniciar Profianalises:",
-        erro
-      );
-
-      await load();
-    }
+  () => {
+    iniciarAplicacao();
   }
 );
