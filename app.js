@@ -1061,6 +1061,7 @@ const fotoJogador = p.foto || p.photo || (p.id ? `${API}/logo/player/${p.id}` : 
         display:flex;
         align-items:center;
         gap:12px;
+        margin-left:55px;
         margin-bottom:10px;
       ">
         ${fotoJogador ? `
@@ -2039,7 +2040,7 @@ const textoJogadores =
                     style="
                       position:absolute;
                       top:10px;
-                      right:10px;
+                      left:10px;
                       z-index:2;
                       min-width:26px;
                       height:26px;
