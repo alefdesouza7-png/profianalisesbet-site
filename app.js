@@ -792,7 +792,7 @@ function render(lista) {
     document.querySelector("#status");
 
   const list =
-    document.querySelector("#list");
+    document.querySelector("#games");
 
   if (shown) {
     shown.textContent =
