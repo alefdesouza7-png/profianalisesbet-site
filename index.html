@@ -1,8 +1,379 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Profianalisesbet</title><link rel="stylesheet" href="styles.css"></head><body>
-<header><b class="logo">P</b><strong>Profianalises<span>bet</span></strong><small>Estatísticas de futebol</small></header>
-<main><p class="green">DADOS DE FUTEBOL</p><h1>Analise jogos e jogadores em segundos.</h1><p class="sub">Dados carregados diretamente do banco do Profianalisesbet.</p>
-<input id="q" placeholder="Buscar time ou campeonato...">
-<nav><button id="todos">Jogos</button><button id="live">Ao vivo</button></nav>
-<section class="stats"><div>Jogos no banco<b id="total">—</b></div><div>Exibidos<b id="shown">—</b></div></section>
-<section class="panel"><div class="head"><h2 id="title">Jogos</h2><button id="refresh">Atualizar</button></div><p id="status">Carregando...</p><div id="list"></div></section></main>
-<script src="app.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+
+  <meta
+    name="theme-color"
+    content="#07110d"
+  >
+
+  <meta
+    name="description"
+    content="Profianalises - Estatísticas, tendências e análises de futebol."
+  >
+
+  <title>Profianalises</title>
+
+  <link
+    rel="stylesheet"
+    href="styles.css"
+  >
+</head>
+
+<body>
+
+  <div class="app-shell">
+
+    <!-- =========================
+         TOPO
+    ========================== -->
+
+    <header class="topbar">
+
+      <div class="brand">
+
+        <div class="brand-mark">
+          P
+        </div>
+
+        <div class="brand-text">
+          <strong>
+            Profianalises
+          </strong>
+
+          <span>
+            Futebol & Dados
+          </span>
+        </div>
+
+      </div>
+
+      <button
+        class="icon-button"
+        type="button"
+        onclick="load()"
+        aria-label="Atualizar"
+      >
+        ↻
+      </button>
+
+    </header>
+
+
+    <!-- =========================
+         CONTEÚDO PRINCIPAL
+    ========================== -->
+
+    <main class="main-content">
+
+      <!-- HERO -->
+
+      <section class="hero">
+
+        <div class="hero-top">
+
+          <div>
+            <span class="eyebrow">
+              PROFIANALISES
+            </span>
+
+            <h1>
+              Jogos de hoje
+            </h1>
+
+            <p id="status">
+              Carregando partidas...
+            </p>
+          </div>
+
+          <div class="live-dot-box">
+            <span class="live-dot"></span>
+            Dados ao vivo
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- BUSCA -->
+
+      <section class="search-area">
+
+        <div class="search-box">
+
+          <span class="search-icon">
+            ⌕
+          </span>
+
+          <input
+            id="q"
+            type="search"
+            placeholder="Buscar time ou campeonato..."
+            autocomplete="off"
+          >
+
+        </div>
+
+      </section>
+
+
+      <!-- NAVEGAÇÃO -->
+
+      <nav class="home-tabs">
+
+        <button
+          id="todos"
+          class="home-tab active"
+          type="button"
+          onclick="load('jogos')"
+        >
+          Jogos
+        </button>
+
+        <button
+          id="aoVivo"
+          class="home-tab"
+          type="button"
+          onclick="load('ao-vivo')"
+        >
+          <span class="tab-live-dot"></span>
+          Ao vivo
+        </button>
+
+      </nav>
+
+
+      <!-- RESUMO -->
+
+      <section class="quick-stats">
+
+        <article class="quick-card">
+
+          <span>
+            Jogos
+          </span>
+
+          <strong id="total">
+            —
+          </strong>
+
+          <small>
+            disponíveis
+          </small>
+
+        </article>
+
+
+        <article class="quick-card">
+
+          <span>
+            Exibidos
+          </span>
+
+          <strong id="shown">
+            —
+          </strong>
+
+          <small>
+            na tela
+          </small>
+
+        </article>
+
+      </section>
+
+
+      <!-- OPORTUNIDADES -->
+
+      <section class="dashboard-card opportunities-home">
+
+        <div class="section-heading">
+
+          <div>
+            <span class="section-kicker">
+              ANÁLISE
+            </span>
+
+            <h2>
+              Oportunidades
+            </h2>
+          </div>
+
+          <span class="section-badge">
+            Profianalises
+          </span>
+
+        </div>
+
+        <p class="section-description">
+          Mercados que passarem pelos critérios estatísticos
+          aparecerão aqui.
+        </p>
+
+        <div
+          id="homeOpportunities"
+          class="empty-mini"
+        >
+          Selecione uma partida para visualizar
+          oportunidades detalhadas.
+        </div>
+
+      </section>
+
+
+      <!-- JOGOS -->
+
+      <section class="dashboard-card matches-section">
+
+        <div class="section-heading">
+
+          <div>
+            <span class="section-kicker">
+              PARTIDAS
+            </span>
+
+            <h2 id="title">
+              Jogos de hoje
+            </h2>
+          </div>
+
+          <button
+            class="refresh-button"
+            type="button"
+            onclick="load()"
+          >
+            Atualizar
+          </button>
+
+        </div>
+
+
+        <div
+          id="games"
+          class="games-list"
+        >
+          <div class="loading-state">
+
+            <div class="loading-spinner"></div>
+
+            <strong>
+              Carregando jogos...
+            </strong>
+
+            <span>
+              Buscando dados do Profianalises
+            </span>
+
+          </div>
+        </div>
+
+      </section>
+
+
+      <!-- MÚLTIPLAS -->
+
+      <section class="dashboard-card multiples-home">
+
+        <div class="section-heading">
+
+          <div>
+            <span class="section-kicker">
+              COMBINAÇÕES
+            </span>
+
+            <h2>
+              Múltiplas Profianalises
+            </h2>
+          </div>
+
+          <span class="section-badge">
+            Em análise
+          </span>
+
+        </div>
+
+        <p class="section-description">
+          Combinações estatísticas serão exibidas somente
+          quando houver mercados e odds reais qualificadas.
+        </p>
+
+        <div class="target-odds">
+
+          <span>2.00</span>
+          <span>2.50</span>
+          <span>3.00</span>
+          <span>4.00</span>
+          <span>5.00</span>
+
+        </div>
+
+      </section>
+
+
+      <!-- AVISO -->
+
+      <section class="data-note">
+
+        <strong>
+          Profianalises
+        </strong>
+
+        <p>
+          Frequências históricas e scores são ferramentas
+          de análise e não representam garantia de resultado.
+        </p>
+
+      </section>
+
+    </main>
+
+
+    <!-- =========================
+         MENU INFERIOR MOBILE
+    ========================== -->
+
+    <nav class="bottom-nav">
+
+      <button
+        class="bottom-item active"
+        type="button"
+        onclick="load('jogos')"
+      >
+        <span>⌂</span>
+        <small>Início</small>
+      </button>
+
+      <button
+        class="bottom-item"
+        type="button"
+        onclick="load('ao-vivo')"
+      >
+        <span>●</span>
+        <small>Ao vivo</small>
+      </button>
+
+      <button
+        class="bottom-item"
+        type="button"
+        onclick="document.getElementById('q')?.focus()"
+      >
+        <span>⌕</span>
+        <small>Buscar</small>
+      </button>
+
+    </nav>
+
+  </div>
+
+
+  <script src="app.js"></script>
+
+</body>
+</html>
