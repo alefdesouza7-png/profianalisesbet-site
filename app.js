@@ -1082,7 +1082,11 @@ const fotoJogador = p.foto || p.photo || (p.id ? `${API}/logo/player/${p.id}` : 
           <div style="font-weight:800">
             ${e(p.nome ?? p.name ?? "Jogador")}
           </div>
-
+${p.numero || p.number || p.shirtNumber ? `
+  <div style="font-size:12px;font-weight:700;opacity:.85;">
+    Camisa ${e(p.numero || p.number || p.shirtNumber)}
+  </div>
+` : ""}
           <div style="opacity:.7;font-size:13px">
             ${partidas ? `${partidas} partida(s)` : ""}
           </div>
