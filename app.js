@@ -1923,6 +1923,7 @@ function calcularScoreBase() {
   score: null,
   matchup: "-"
 };
+  }
 
   const saldoCasa =
     soma(
