@@ -471,7 +471,39 @@ async function load(m = "jogos") {
         d.data;
     }
 
-    jogos = lista;
+    if (m === "ao-vivo") {
+  jogos = lista;
+} else {
+  const hojeBrasil = new Intl.DateTimeFormat(
+    "en-CA",
+    {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }
+  ).format(new Date());
+
+  jogos = lista.filter(j => {
+    const dataJogo =
+      j.date ||
+      j.fixture?.date;
+
+    if (!dataJogo) return false;
+
+    const diaJogo = new Intl.DateTimeFormat(
+      "en-CA",
+      {
+        timeZone: "America/Sao_Paulo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }
+    ).format(new Date(dataJogo));
+
+    return diaJogo === hojeBrasil;
+  });
+    }
 
     if (status) {
       status.textContent =
