@@ -1189,22 +1189,30 @@ if (periodo === 5) {
   grupo = dados.ultimas10;
   tituloPeriodo = "Últimas 10";
 } else if (periodo === "campeonato") {
-  const campeonatos = Array.isArray(dados.campeonatos)
-    ? dados.campeonatos
-    : [];
+  const partidasBase =
+    Array.isArray(dados?.ultimas10?.partidas)
+      ? dados.ultimas10.partidas
+      : [];
 
-  const campeonatoSelecionado =
-    campeonatos.find(
-      (c) => String(c.id) === String(window.historicoCampeonatoId)
-    ) || campeonatos[0];
+  const campeonatoId =
+    String(window.historicoCampeonatoSelecionado || "");
 
-  grupo = campeonatoSelecionado || {
-    partidas: [],
-    jogadores: []
+  const partidasCampeonato =
+    partidasBase.filter((partida) => {
+      return String(partida?.liga?.id || "") === campeonatoId;
+    });
+
+  grupo = {
+    partidas: partidasCampeonato,
+    jogadores: Array.isArray(dados?.ultimas10?.jogadores)
+  ? dados.ultimas10.jogadores
+  : []
   };
 
   tituloPeriodo =
-    campeonatoSelecionado?.nome || "Campeonato";
+    partidasCampeonato[0]?.liga?.name ||
+    partidasCampeonato[0]?.liga?.nome ||
+    "Campeonato";
 } else {
   grupo = dados.ultimas5;
   tituloPeriodo = "Últimas 5";
@@ -1303,7 +1311,15 @@ function secaoHistorico(d, j) {
     j.away_team ||
     j.teams?.away?.name ||
     "Fora";
+const escudoCasa =
+  casa?.team?.logo ||
+  j?.teams?.home?.logo ||
+  "";
 
+const escudoFora =
+  fora?.team?.logo ||
+  j?.teams?.away?.logo ||
+  "";
   return `
     <section
       class="panel"
@@ -1341,7 +1357,7 @@ function secaoHistorico(d, j) {
           type="button"
           onclick="mudarHistoricoTime('casa')"
         >
-          ${e(nomeCasa)}
+          ${escudoCasa ? `<img src="${e(escudoCasa)}" alt="" style="width:22px;height:22px;object-fit:contain;vertical-align:middle;margin-right:6px;">` : ""}${e(nomeCasa)}
         </button>
 
         <button
@@ -1350,7 +1366,7 @@ function secaoHistorico(d, j) {
           type="button"
           onclick="mudarHistoricoTime('fora')"
         >
-          ${e(nomeFora)}
+          ${escudoFora ? `<img src="${e(escudoFora)}" alt="" style="width:22px;height:22px;object-fit:contain;vertical-align:middle;margin-right:6px;">` : ""}${e(nomeFora)}
         </button>
       </div>
 
@@ -1622,14 +1638,7 @@ function atualizarBotoesHistorico() {
   const cinco = document.getElementById("hist5");
   const dez = document.getElementById("hist10");
   const campeonato = document.getElementById("histCampeonato");
-const blocoCasaFora = document.getElementById("historicoCasaFora");
 
-if (blocoCasaFora) {
-  blocoCasaFora.style.display =
-    historicoPeriodoSelecionado === "campeonato"
-      ? "none"
-      : "flex";
-}
   historicoTimeSelecionado === "casa"
     ? ativo(casa)
     : inativo(casa);
@@ -1807,10 +1816,89 @@ if (periodo?.id) {
   periodo = time?.ultimas5;
 }
 
-  const jogadoresOriginais =
-    Array.isArray(periodo?.jogadores)
-      ? periodo.jogadores
-      : [];
+  let jogadoresOriginais =
+  Array.isArray(periodo?.jogadores)
+    ? periodo.jogadores
+    : [];
+
+if (
+  jogadoresOriginais.length === 0 &&
+  Array.isArray(periodo?.partidas)
+) {
+  const mapaJogadores = new Map();
+
+  periodo.partidas.forEach((partida) => {
+    if (!Array.isArray(partida?.jogadores)) return;
+
+    partida.jogadores.forEach((jogador) => {
+      const jogadorId =
+        jogador?.id ||
+        jogador?.playerId ||
+        jogador?.nome;
+
+      if (!jogadorId) return;
+
+      const chave = String(jogadorId);
+
+      if (!mapaJogadores.has(chave)) {
+        mapaJogadores.set(chave, {
+          ...jogador,
+          partidas: 0,
+          minutos: 0,
+          chutes: 0,
+          chutesGol: 0,
+          gols: 0,
+          assistencias: 0,
+          passes: 0,
+          passesChave: 0,
+          faltasCometidas: 0,
+          faltasSofridas: 0,
+          desarmes: 0,
+          amarelos: 0,
+          vermelhos: 0,
+          somaNotas: 0,
+          notasValidas: 0
+        });
+      }
+
+      const agregado = mapaJogadores.get(chave);
+
+      agregado.partidas += 1;
+
+      [
+        "minutos",
+        "chutes",
+        "chutesGol",
+        "gols",
+        "assistencias",
+        "passes",
+        "passesChave",
+        "faltasCometidas",
+        "faltasSofridas",
+        "desarmes",
+        "amarelos",
+        "vermelhos"
+      ].forEach((campo) => {
+        agregado[campo] += numeroHistorico(
+          jogador?.[campo]
+        );
+      });
+
+      const nota = numeroHistorico(jogador?.nota);
+
+      if (nota > 0) {
+        agregado.somaNotas += nota;
+        agregado.notasValidas += 1;
+        agregado.nota =
+          agregado.somaNotas /
+          agregado.notasValidas;
+      }
+    });
+  });
+
+  jogadoresOriginais =
+    Array.from(mapaJogadores.values());
+}
 
   const jogadores =
     [...jogadoresOriginais].sort(
