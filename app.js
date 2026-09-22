@@ -1429,10 +1429,12 @@ async function abrirJogo(id) {
         fixture.league?.round,
 
       date:
-        fixture.fixture?.date,
+        fixture.fixture?.date ||
+        fixture.date,
 
       status:
-        fixture.fixture?.status,
+        fixture.fixture?.status ||
+        fixture.status,
 
       home: {
         id:
