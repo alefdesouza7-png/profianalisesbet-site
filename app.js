@@ -1208,6 +1208,7 @@ function normalizarEstatisticas(dados) {
         )
     };
   });
+}
   /* =========================================================
    CARREGAMENTO COMPLETO DA PARTIDA
 ========================================================= */
