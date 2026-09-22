@@ -1073,7 +1073,7 @@ const fotoJogador = p.foto || p.photo || (p.id ? `${API}/logo/player/${p.id}` : 
       border-radius:50%;
       object-fit:cover;
     "
-    onerror="this.style.display='none'"
+    onerror="if(!this.dataset.fallback){this.dataset.fallback='1';this.src='${API}/logo/player/${p.id}';}else{this.style.display='none';}"
   >
 ` : ""}
 
