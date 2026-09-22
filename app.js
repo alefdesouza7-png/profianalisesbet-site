@@ -1326,7 +1326,7 @@ function secaoHistorico(d, j) {
         Compare jogadores por período e estatística
       </p>
 
-      <div
+      <div id="historicoCasaFora"
         style="
           display:flex;
           gap:8px;
@@ -1622,7 +1622,14 @@ function atualizarBotoesHistorico() {
   const cinco = document.getElementById("hist5");
   const dez = document.getElementById("hist10");
   const campeonato = document.getElementById("histCampeonato");
+const blocoCasaFora = document.getElementById("historicoCasaFora");
 
+if (blocoCasaFora) {
+  blocoCasaFora.style.display =
+    historicoPeriodoSelecionado === "campeonato"
+      ? "none"
+      : "flex";
+}
   historicoTimeSelecionado === "casa"
     ? ativo(casa)
     : inativo(casa);
