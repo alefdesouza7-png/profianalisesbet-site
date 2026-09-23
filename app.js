@@ -5433,10 +5433,16 @@ function colunaRanking(
                     "
                   >
                     ${n(
-                      p[
-                        rankingJogadoresCampo
-                      ]
-                    )}
+  p[
+    rankingJogadoresCampo
+  ]
+).toLocaleString(
+  "pt-BR",
+  {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  }
+)}
                   </strong>
                 </button>
               `)
@@ -5461,10 +5467,163 @@ function colunaRanking(
    RENDER JOGADORES
 ========================================================= */
 
+let filtroRankingHistorico = {
+  quantidade: 5,
+  local: "geral"
+};
+
+function mudarRankingHistoricoQuantidade(qtd) {
+  filtroRankingHistorico.quantidade =
+    Number(qtd) === 10 ? 10 : 5;
+
+  const scrollAntes = window.scrollY;
+
+renderPaginaPartida();
+
+requestAnimationFrame(() => {
+  window.scrollTo(0, scrollAntes);
+});
+}
+
+function mudarRankingHistoricoLocal(local) {
+  if (
+    ["geral", "casa", "fora"].includes(local)
+  ) {
+    filtroRankingHistorico.local = local;
+  }
+
+  const scrollAntes = window.scrollY;
+
+renderPaginaPartida();
+
+requestAnimationFrame(() => {
+  window.scrollTo(0, scrollAntes);
+});
+}
+function jogadoresHistoricosRanking(lado) {
+  const quantidade =
+    filtroRankingHistorico.quantidade;
+
+  let partidas =
+    partidasHistoricoLado(
+      lado,
+      quantidade
+    );
+
+  if (
+    filtroRankingHistorico.local === "casa"
+  ) {
+    partidas =
+      partidas.filter(
+        p =>
+          String(p?.local || "")
+            .toLowerCase() === "casa"
+      );
+  }
+
+  if (
+    filtroRankingHistorico.local === "fora"
+  ) {
+    partidas =
+      partidas.filter(
+        p =>
+          String(p?.local || "")
+            .toLowerCase() === "fora"
+      );
+  }
+
+  const mapa = new Map();
+
+  partidas.forEach(partida => {
+    safeArray(
+      partida?.jogadores
+    ).forEach(j => {
+      const id =
+        Number(j?.id || 0);
+
+      if (!id) return;
+
+      if (!mapa.has(id)) {
+        mapa.set(id, {
+          id,
+          nome:
+            j?.nome ||
+            j?.name ||
+            "Jogador",
+
+          foto:
+            j?.foto ||
+            j?.photo ||
+            `${API}/logo/player/${id}`,
+
+          chutes: 0,
+          chutesGol: 0,
+          faltasCometidas: 0,
+          desarmes: 0,
+          passes: 0,
+          partidas: 0
+        });
+      }
+
+      const item =
+        mapa.get(id);
+
+      item.partidas++;
+
+      item.chutes +=
+        n(j?.chutes);
+
+      item.chutesGol +=
+        n(j?.chutesGol);
+
+      item.faltasCometidas +=
+        n(j?.faltasCometidas);
+
+      item.desarmes +=
+        n(j?.desarmes);
+
+      item.passes +=
+        n(j?.passes);
+    });
+  });
+
+  return [...mapa.values()]
+    .map(j => {
+      const qtd =
+        Math.max(
+          1,
+          j.partidas
+        );
+
+      return {
+        ...j,
+
+        chutes:
+          j.chutes / qtd,
+
+        chutesGol:
+          j.chutesGol / qtd,
+
+        faltasCometidas:
+          j.faltasCometidas / qtd,
+
+        desarmes:
+          j.desarmes / qtd,
+
+        passes:
+          j.passes / qtd
+      };
+    });
+}
 function renderJogadores() {
   const jogadores =
     extrairJogadoresPartida();
+  const rankingCasaHistorico =
+    jogadoresHistoricosRanking("casa");
 
+  const rankingForaHistorico =
+    jogadoresHistoricosRanking("fora");
+  
   const casa =
     jogadores.filter(
       p =>
@@ -5490,6 +5649,57 @@ function renderJogadores() {
         "Compare os líderes de cada equipe na partida."
       )}
 
+      <div
+        style="
+          display:flex;
+          gap:7px;
+          overflow-x:auto;
+          max-width:100%;
+          min-width:0;
+          margin-bottom:10px;
+        "
+      >
+        ${botao(
+          "Últimos 5",
+          "mudarRankingHistoricoQuantidade(5)",
+          filtroRankingHistorico.quantidade === 5
+        )}
+
+        ${botao(
+          "Últimos 10",
+          "mudarRankingHistoricoQuantidade(10)",
+          filtroRankingHistorico.quantidade === 10
+        )}
+      </div>
+
+      <div
+        style="
+          display:flex;
+          gap:7px;
+          overflow-x:auto;
+          max-width:100%;
+          min-width:0;
+          margin-bottom:15px;
+        "
+      >
+        ${botao(
+          "Geral",
+          "mudarRankingHistoricoLocal('geral')",
+          filtroRankingHistorico.local === "geral"
+        )}
+
+        ${botao(
+          "Casa",
+          "mudarRankingHistoricoLocal('casa')",
+          filtroRankingHistorico.local === "casa"
+        )}
+
+        ${botao(
+          "Fora",
+          "mudarRankingHistoricoLocal('fora')",
+          filtroRankingHistorico.local === "fora"
+        )}
+      </div>
       <div
         style="
           display:flex;
@@ -5560,17 +5770,21 @@ function renderJogadores() {
           gap:12px;
         "
       >
-        ${colunaRanking(
-          jogadores,
-          partidaAtual?.home
-        )}
+      ${colunaRanking(
+  rankingCasaHistorico.map(p => ({
+    ...p,
+    teamId: partidaAtual?.home?.id
+  })),
+  partidaAtual?.home
+)}
 
-        ${colunaRanking(
-          jogadores,
-          partidaAtual?.away
-        )}
-      </div>
-    `)}
+${colunaRanking(
+  rankingForaHistorico.map(p => ({
+    ...p,
+    teamId: partidaAtual?.away?.id
+  })),
+  partidaAtual?.away
+)}
 
     ${painel(`
       ${tituloSecao(
