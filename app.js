@@ -5359,21 +5359,43 @@ function rankingTime(
     .slice(0, 8);
 }
 
-function colunaRanking(
-  jogadores,
-  team
-) {
+function colunaRanking(jogadores, team) {
   const ranking =
     rankingTime(
       jogadores,
       team?.id
     );
 
+  const formatarMedia = valor =>
+    n(valor).toLocaleString(
+      "pt-BR",
+      {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1
+      }
+    );
+
+  const formatarJogo = valor => {
+    if (
+      valor === null ||
+      valor === undefined
+    ) {
+      return "-";
+    }
+
+    return n(valor).toLocaleString(
+      "pt-BR",
+      {
+        maximumFractionDigits: 1
+      }
+    );
+  };
+
   return `
-    <div>
+    <div style="min-width:0;">
       <div
         style="
-          margin-bottom:8px;
+          margin-bottom:10px;
           font-size:11px;
           font-weight:950;
         "
@@ -5383,77 +5405,148 @@ function colunaRanking(
 
       ${
         ranking.length
-          ? ranking
-              .map((p, i) => `
+          ? ranking.map((p, i) => {
+              const valores =
+                safeArray(
+                  p?.historico?.[
+                    rankingJogadoresCampo
+                  ]
+                ).slice(
+                  0,
+                  filtroRankingHistorico
+                    .quantidade
+                );
+
+              return `
                 <button
                   onclick="abrirJogador(${Number(
                     p.id || 0
                   )})"
                   style="
                     width:100%;
-                    display:grid;
-                    grid-template-columns:22px 1fr auto;
-                    gap:7px;
-                    align-items:center;
-                    padding:8px 5px;
+                    padding:9px 4px;
                     border:0;
-                    border-bottom:1px solid rgba(255,255,255,.06);
+                    border-bottom:1px solid rgba(255,255,255,.07);
                     background:transparent;
                     color:#fff;
                     text-align:left;
                   "
                 >
-                  <span
+                  <div
                     style="
-                      color:${
-                        i === 0
-                          ? "#2ee58b"
-                          : "rgba(255,255,255,.4)"
-                      };
-                      font-weight:950;
+                      display:grid;
+                      grid-template-columns:20px minmax(0,1fr) auto;
+                      gap:7px;
+                      align-items:center;
                     "
                   >
-                    ${i + 1}
-                  </span>
+                    <span
+                      style="
+                        color:${
+                          i === 0
+                            ? "#2ee58b"
+                            : "rgba(255,255,255,.40)"
+                        };
+                        font-size:16px;
+                        font-weight:950;
+                      "
+                    >
+                      ${i + 1}
+                    </span>
 
-                  <span
+                    <div
+                      style="
+                        min-width:0;
+                        overflow:hidden;
+                        text-overflow:ellipsis;
+                        white-space:nowrap;
+                        font-size:11px;
+                        font-weight:900;
+                      "
+                    >
+                      ${e(p.nome || "Jogador")}
+                    </div>
+
+                    <strong
+                      style="
+                        color:#2ee58b;
+                        font-size:16px;
+                        white-space:nowrap;
+                      "
+                    >
+                      ${formatarMedia(
+                        p[
+                          rankingJogadoresCampo
+                        ]
+                      )}
+                    </strong>
+                  </div>
+
+                  <div
                     style="
+                      display:flex;
+                      align-items:center;
+                      gap:4px;
+                      margin-top:6px;
+                      margin-left:27px;
                       overflow:hidden;
-                      white-space:nowrap;
-                      text-overflow:ellipsis;
-                      font-size:11px;
-                      font-weight:800;
                     "
                   >
-                    ${e(p.nome)}
-                  </span>
+                    ${
+                      p?.numero != null
+                        ? `
+                          <span
+                            style="
+                              min-width:23px;
+                              height:20px;
+                              padding:0 4px;
+                              display:flex;
+                              align-items:center;
+                              justify-content:center;
+                              border-radius:5px;
+                              background:rgba(46,229,139,.14);
+                              color:#2ee58b;
+                              font-size:9px;
+                              font-weight:950;
+                            "
+                          >
+                            ${e(p.numero)}
+                          </span>
+                        `
+                        : ""
+                    }
 
-                  <strong
-                    style="
-                      color:#2ee58b;
-                    "
-                  >
-                    ${n(
-  p[
-    rankingJogadoresCampo
-  ]
-).toLocaleString(
-  "pt-BR",
-  {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1
-  }
-)}
-                  </strong>
+                    ${valores
+                      .map(valor => `
+                        <span
+                          style="
+                            min-width:20px;
+                            height:20px;
+                            padding:0 3px;
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            border-radius:5px;
+                            background:rgba(255,255,255,.08);
+                            color:#fff;
+                            font-size:9px;
+                            font-weight:850;
+                          "
+                        >
+                          ${formatarJogo(valor)}
+                        </span>
+                      `)
+                      .join("")}
+                  </div>
                 </button>
-              `)
-              .join("")
+              `;
+            }).join("")
           : `
             <div
               style="
-                padding:15px 0;
                 opacity:.5;
                 font-size:11px;
+                padding:10px 0;
               "
             >
               Sem dados.
@@ -5470,7 +5563,8 @@ function colunaRanking(
 
 let filtroRankingHistorico = {
   quantidade: 5,
-  local: "geral"
+  local: "geral",
+  campeonato: "todos"
 };
 
 function mudarRankingHistoricoQuantidade(qtd) {
@@ -5501,9 +5595,23 @@ requestAnimationFrame(() => {
   window.scrollTo(0, scrollAntes);
 });
 }
+function mudarRankingHistoricoCampeonato(campeonato) {
+  filtroRankingHistorico.campeonato =
+    String(campeonato || "todos");
+
+  const scrollAntes = window.scrollY;
+
+  renderPaginaPartida();
+
+  requestAnimationFrame(() => {
+    window.scrollTo(0, scrollAntes);
+  });
+}
 function jogadoresHistoricosRanking(lado) {
   const quantidade =
-    filtroRankingHistorico.quantidade;
+    Number(filtroRankingHistorico.quantidade) === 10
+      ? 10
+      : 5;
 
   const bloco =
     lado === "casa"
@@ -5513,36 +5621,76 @@ function jogadoresHistoricosRanking(lado) {
   if (!bloco) return [];
 
   const chave =
-    Number(quantidade) === 5
-      ? "ultimas5"
-      : "ultimas10";
+    quantidade === 10
+      ? "ultimas10"
+      : "ultimas5";
 
   let partidas =
     safeArray(
       bloco?.[chave]?.partidas
-    ).slice(
-      0,
-      Number(quantidade) === 5
-        ? 5
-        : 10
     );
+  const campeonatoSelecionado =
+  String(
+    filtroRankingHistorico.campeonato ||
+    "todos"
+  );
+
+if (campeonatoSelecionado !== "todos") {
+  partidas = partidas.filter(p =>
+    String(p?.liga?.id || "") ===
+    campeonatoSelecionado
+  );
+}
 
   const filtroLocal =
     filtroRankingHistorico.local;
 
-  if (filtroLocal !== "geral") {
-    partidas = partidas.filter(partida => {
-      const local =
-        String(partida?.local || "")
-          .trim()
-          .toLowerCase();
+  /*
+    Na partida atual:
+    lado "casa" = time mandante
+    lado "fora" = time visitante
 
-      return local === filtroLocal;
-    });
+    CASA:
+    compara mandante em casa
+    contra visitante fora.
+
+    FORA:
+    compara mandante fora
+    contra visitante em casa.
+  */
+  if (filtroLocal === "casa") {
+    const localDesejado =
+      lado === "casa"
+        ? "casa"
+        : "fora";
+
+    partidas = partidas.filter(p =>
+      String(p?.local || "")
+        .trim()
+        .toLowerCase() === localDesejado
+    );
   }
 
+  if (filtroLocal === "fora") {
+    const localDesejado =
+      lado === "casa"
+        ? "fora"
+        : "casa";
+
+    partidas = partidas.filter(p =>
+      String(p?.local || "")
+        .trim()
+        .toLowerCase() === localDesejado
+    );
+  }
+
+  partidas = partidas.slice(0, quantidade);
   const mapa = new Map();
 
+  /*
+    Primeiro cadastramos todos os jogadores
+    encontrados no recorte.
+  */
   partidas.forEach(partida => {
     safeArray(
       partida?.jogadores
@@ -5561,6 +5709,11 @@ function jogadoresHistoricosRanking(lado) {
             j?.name ||
             "Jogador",
 
+          numero:
+            j?.numero ??
+            j?.number ??
+            null,
+
           foto:
             j?.foto ||
             j?.photo ||
@@ -5573,12 +5726,98 @@ function jogadoresHistoricosRanking(lado) {
           desarmes: 0,
           passes: 0,
           passesChave: 0,
-          partidas: 0
+
+          partidas: 0,
+
+          historico: {
+            chutes: [],
+            chutesGol: [],
+            faltasCometidas: [],
+            faltasSofridas: [],
+            desarmes: [],
+            passes: [],
+            passesChave: []
+            historico: {
+  chutes: [],
+  chutesGol: [],
+  faltasCometidas: [],
+  faltasSofridas: [],
+  desarmes: [],
+  passes: [],
+  passesChave: []
+},
+          }
         });
       }
 
       const item =
         mapa.get(id);
+
+      if (
+        item.numero == null &&
+        (j?.numero != null ||
+         j?.number != null)
+      ) {
+        item.numero =
+          j?.numero ??
+          j?.number;
+      }
+    });
+  });
+
+  /*
+    Agora percorremos cada partida.
+    Para cada jogador guardamos também
+    o valor daquela partida individual.
+  */
+  partidas.forEach(partida => {
+    const jogadoresPartida =
+      safeArray(partida?.jogadores);
+
+    mapa.forEach(item => {
+      const j =
+        jogadoresPartida.find(
+          jogador =>
+            Number(jogador?.id || 0) ===
+            Number(item.id)
+        );
+
+      const jogou = !!j;
+
+      const valor = campo =>
+        jogou
+          ? n(j?.[campo])
+          : null;
+
+      item.historico.chutes.push(
+        valor("chutes")
+      );
+
+      item.historico.chutesGol.push(
+        valor("chutesGol")
+      );
+
+      item.historico.faltasCometidas.push(
+        valor("faltasCometidas")
+      );
+
+      item.historico.faltasSofridas.push(
+        valor("faltasSofridas")
+      );
+
+      item.historico.desarmes.push(
+        valor("desarmes")
+      );
+
+      item.historico.passes.push(
+        valor("passes")
+      );
+
+      item.historico.passesChave.push(
+        valor("passesChave")
+      );
+
+      if (!jogou) return;
 
       item.partidas++;
 
@@ -5608,10 +5847,7 @@ function jogadoresHistoricosRanking(lado) {
   return [...mapa.values()]
     .map(j => {
       const qtd =
-        Math.max(
-          1,
-          j.partidas
-        );
+        Math.max(1, j.partidas);
 
       return {
         ...j,
@@ -5647,7 +5883,25 @@ function renderJogadores() {
 
   const rankingForaHistorico =
     jogadoresHistoricosRanking("fora");
-  
+
+  const partidasParaCampeonatos = [
+  ...partidasHistoricoLado("casa", 10),
+  ...partidasHistoricoLado("fora", 10)
+];
+
+const campeonatosRanking = [
+  ...new Map(
+    partidasParaCampeonatos
+      .filter(p => p?.liga?.id)
+      .map(p => [
+        String(p.liga.id),
+        {
+          id: String(p.liga.id),
+          nome: p.liga.name || "Campeonato"
+        }
+      ])
+  ).values()
+];
   const casa =
     jogadores.filter(
       p =>
@@ -5673,6 +5927,41 @@ function renderJogadores() {
         "Compare os líderes de cada equipe na partida."
       )}
 
+<div
+  style="
+    margin-bottom:12px;
+  "
+>
+  <select
+    onchange="mudarRankingHistoricoCampeonato(this.value)"
+    style="
+      width:100%;
+      padding:13px 14px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background:#102630;
+      color:#fff;
+      font-size:14px;
+      font-weight:800;
+      outline:none;
+    "
+  >
+    <option value="todos"
+      ${filtroRankingHistorico.campeonato === "todos" ? "selected" : ""}
+    >
+      Todos os campeonatos
+    </option>
+
+    ${campeonatosRanking.map(c => `
+      <option
+        value="${e(c.id)}"
+        ${String(filtroRankingHistorico.campeonato) === String(c.id) ? "selected" : ""}
+      >
+        ${e(c.nome)}
+      </option>
+    `).join("")}
+  </select>
+</div>
       <div
         style="
           display:flex;
