@@ -5869,7 +5869,7 @@ ${colunaRanking(
         </div>
       </div>
     `)}
-  `);
+  `;
 }
 /* =========================================================
    ESTATÍSTICAS DETALHADAS DA PARTIDA
