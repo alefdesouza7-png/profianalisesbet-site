@@ -1717,7 +1717,7 @@ function cabecalhoPartida() {
       <div
         style="
           display:grid;
-          grid-template-columns:1fr 90px 1fr;
+          grid-template-columns:minmax(0,1fr) 72px minmax(0,1fr);
           gap:10px;
           align-items:center;
           margin-top:20px;
@@ -2830,64 +2830,251 @@ function renderH2H() {
       filtroH2H
     );
 
-  return painel(`
-    ${tituloSecao(
-      "Confrontos diretos",
-      "Histórico H2H entre as duas equipes"
-    )}
+  const partidasCasa =
+    partidasHistoricoLado(
+      "casa",
+      filtroH2H
+    );
 
-    <div
-      style="
-        display:flex;
-        gap:8px;
-        margin-bottom:13px;
-      "
-    >
-      ${botao(
-        "Últimos 5",
-        "mudarFiltroH2H(5)",
-        filtroH2H === 5
-      )}
+  const partidasFora =
+    partidasHistoricoLado(
+      "fora",
+      filtroH2H
+    );
 
-      ${botao(
-        "Últimos 10",
-        "mudarFiltroH2H(10)",
-        filtroH2H === 10
-      )}
-    </div>
+  function cardUltimoJogo(p) {
+    const local =
+      String(
+        p?.local ||
+        ""
+      ).toLowerCase();
 
-    ${
-      jogosH2H.length
-        ? jogosH2H
-            .map(cardJogoH2H)
-            .join("")
-        : `
-          <div
+    const adversario =
+      p?.adversario?.name ||
+      p?.adversario?.nome ||
+      p?.adversario ||
+      "-";
+
+    const liga =
+      p?.liga?.name ||
+      p?.liga?.nome ||
+      p?.competition ||
+      p?.campeonato ||
+      "-";
+
+    const gf =
+      p?.golsFavor ??
+      "-";
+
+    const gc =
+      p?.golsContra ??
+      "-";
+
+    const resultado =
+      n(gf) > n(gc)
+        ? "V"
+        : n(gf) < n(gc)
+          ? "D"
+          : "E";
+
+    return `
+      <div
+        style="
+          padding:12px 0;
+          border-bottom:1px solid rgba(255,255,255,.07);
+          min-width:0;
+        "
+      >
+        <div
+          style="
+            display:flex;
+            justify-content:space-between;
+            gap:8px;
+            font-size:10px;
+            opacity:.55;
+          "
+        >
+          <span>
+            ${e(dataCurta(p?.data))}
+          </span>
+
+          <span
             style="
-              padding:18px;
-              text-align:center;
-              border-radius:12px;
-              background:rgba(255,255,255,.035);
+              overflow:hidden;
+              text-overflow:ellipsis;
+              white-space:nowrap;
+              text-align:right;
             "
           >
-            <strong>
-              Nenhum confronto direto encontrado.
-            </strong>
+            ${e(liga)}
+          </span>
+        </div>
 
+        <div
+          style="
+            display:grid;
+            grid-template-columns:minmax(0,1fr) auto;
+            gap:10px;
+            align-items:center;
+            margin-top:8px;
+          "
+        >
+          <div
+            style="
+              min-width:0;
+            "
+          >
             <div
               style="
-                margin-top:6px;
-                font-size:11px;
-                opacity:.55;
+                font-size:12px;
+                font-weight:900;
+                overflow:hidden;
+                text-overflow:ellipsis;
+                white-space:nowrap;
               "
             >
-              O H2H depende dos dados disponíveis no servidor.
+              ${local === "casa" ? "Casa" : local === "fora" ? "Fora" : "Jogo"}
+              • ${e(adversario)}
             </div>
           </div>
-        `
-    }
-  `);
-    }
+
+          <div
+            style="
+              display:flex;
+              align-items:center;
+              gap:8px;
+              white-space:nowrap;
+            "
+          >
+            <strong
+              style="
+                font-size:15px;
+              "
+            >
+              ${e(gf)} × ${e(gc)}
+            </strong>
+
+            <span
+              style="
+                min-width:25px;
+                text-align:center;
+                padding:4px 6px;
+                border-radius:7px;
+                font-size:10px;
+                font-weight:950;
+                background:rgba(255,255,255,.07);
+              "
+            >
+              ${resultado}
+            </span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function blocoUltimos(
+    titulo,
+    partidas
+  ) {
+    return painel(`
+      ${tituloSecao(
+        titulo,
+        `Últimos ${Math.min(
+          filtroH2H,
+          partidas.length
+        )} jogos disponíveis`
+      )}
+
+      ${
+        partidas.length
+          ? partidas
+              .map(cardUltimoJogo)
+              .join("")
+          : `
+            <div
+              style="
+                padding:16px;
+                text-align:center;
+                opacity:.6;
+                font-size:12px;
+              "
+            >
+              Histórico não disponível.
+            </div>
+          `
+      }
+    `);
+  }
+
+  return `
+    ${painel(`
+      ${tituloSecao(
+        "Confrontos diretos",
+        "Histórico entre as duas equipes"
+      )}
+
+      <div
+        style="
+          display:flex;
+          gap:8px;
+          margin-bottom:13px;
+          overflow-x:auto;
+          max-width:100%;
+        "
+      >
+        ${botao(
+          "Últimos 5",
+          "mudarFiltroH2H(5)",
+          filtroH2H === 5
+        )}
+
+        ${botao(
+          "Últimos 10",
+          "mudarFiltroH2H(10)",
+          filtroH2H === 10
+        )}
+      </div>
+
+      ${
+        jogosH2H.length
+          ? jogosH2H
+              .map(cardJogoH2H)
+              .join("")
+          : `
+            <div
+              style="
+                padding:18px;
+                text-align:center;
+                border-radius:12px;
+                background:rgba(255,255,255,.035);
+              "
+            >
+              <strong>
+                Nenhum confronto direto encontrado.
+              </strong>
+            </div>
+          `
+      }
+    `)}
+
+    ${blocoUltimos(
+      `Últimas partidas — ${
+        partidaAtual?.home?.name ||
+        "Mandante"
+      }`,
+      partidasCasa
+    )}
+
+    ${blocoUltimos(
+      `Últimas partidas — ${
+        partidaAtual?.away?.name ||
+        "Visitante"
+      }`,
+      partidasFora
+    )}
+  `;
+}
 /* =========================================================
    ANÁLISE AUTOMÁTICA
 ========================================================= */
@@ -7254,13 +7441,17 @@ function renderPaginaPartida() {
   }
 
   container.innerHTML = `
-    <div
-      style="
-        max-width:760px;
-        margin:0 auto;
-        padding-bottom:40px;
-      "
-    >
+  <div
+    style="
+      width:100%;
+      max-width:760px;
+      min-width:0;
+      margin:0 auto;
+      padding:0 10px 40px;
+      box-sizing:border-box;
+      overflow-x:hidden;
+    "
+  >
       ${cabecalhoPartida()}
 
       ${barraAbasPartida()}
