@@ -118,10 +118,11 @@ function soma(lista, campo) {
    COMPONENTES VISUAIS
 ========================================================= */
 
-function botao(texto, onclick, ativo = false) {
+function botao(texto, onclick, ativo = false, atributos = "") {
   return `
     <button
       onclick="${onclick}"
+      ${atributos}
       style="
         border:1px solid ${
           ativo
@@ -1880,6 +1881,7 @@ overscroll-behavior-x:contain;
                 nome,
                 `mudarAbaPartida('${id}')`,
                 abaAtual === id
+                `data-aba-partida="${id}"`
               )
           )
           .join("")
@@ -1904,6 +1906,25 @@ function mudarAbaPartida(aba) {
       left: 0,
       behavior: "instant"
     });
+
+    const botoes =
+      document.querySelectorAll(
+        "[data-aba-partida]"
+      );
+
+    const ativo =
+      [...botoes].find(
+        botao =>
+          botao.dataset.abaPartida === aba
+      );
+
+    if (ativo) {
+      ativo.scrollIntoView({
+        behavior: "instant",
+        block: "nearest",
+        inline: "center"
+      });
+    }
   });
 }
 
