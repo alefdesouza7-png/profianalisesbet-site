@@ -1983,6 +1983,43 @@ function calcularScoreBase() {
       "golsContra"
     );
 
+  const mediaStat = (partidas, campo) => {
+  const valores = safeArray(partidas)
+    .map(p => p?.estatisticas?.[campo])
+    .filter(v =>
+      v !== null &&
+      v !== undefined &&
+      Number.isFinite(Number(v))
+    )
+    .map(Number);
+
+  if (!valores.length) return null;
+
+  return (
+    valores.reduce((total, valor) => total + valor, 0) /
+    valores.length
+  );
+};
+
+const statsCasa = {
+  chutes: mediaStat(casa, "chutes"),
+  chutesGol: mediaStat(casa, "chutesGol"),
+  escanteios: mediaStat(casa, "escanteios"),
+  faltas: mediaStat(casa, "faltas"),
+  posse: mediaStat(casa, "posse"),
+  amarelos: mediaStat(casa, "amarelos"),
+  vermelhos: mediaStat(casa, "vermelhos")
+};
+
+const statsFora = {
+  chutes: mediaStat(fora, "chutes"),
+  chutesGol: mediaStat(fora, "chutesGol"),
+  escanteios: mediaStat(fora, "escanteios"),
+  faltas: mediaStat(fora, "faltas"),
+  posse: mediaStat(fora, "posse"),
+  amarelos: mediaStat(fora, "amarelos"),
+  vermelhos: mediaStat(fora, "vermelhos")
+};
   const amostra =
     Math.min(
       10,
@@ -2008,7 +2045,17 @@ function calcularScoreBase() {
       12,
       amostra
     );
+const diferencaChutesGol =
+  (statsCasa.chutesGol ?? 0) -
+  (statsFora.chutesGol ?? 0);
 
+score += Math.max(
+  -8,
+  Math.min(
+    8,
+    diferencaChutesGol * 2
+  )
+);
   score =
     Math.max(
       0,
