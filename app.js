@@ -5641,7 +5641,7 @@ function renderJogadores() {
           partidaAtual?.away?.id
         )
     );
-
+  
   return `
     ${painel(`
       ${tituloSecao(
@@ -5785,7 +5785,9 @@ ${colunaRanking(
   })),
   partidaAtual?.away
 )}
-
+      </div>
+    `)}
+    
     ${painel(`
       ${tituloSecao(
         "Jogadores da partida",
@@ -5867,7 +5869,7 @@ ${colunaRanking(
         </div>
       </div>
     `)}
-  `;
+  `);
 }
 /* =========================================================
    ESTATÍSTICAS DETALHADAS DA PARTIDA
