@@ -1864,6 +1864,9 @@ function barraAbasPartida() {
         display:flex;
         gap:8px;
         overflow-x:auto;
+        max-width:100%;
+min-width:0;
+overscroll-behavior-x:contain;
         padding:2px 0 12px;
         margin-bottom:4px;
         scrollbar-width:none;
@@ -1886,8 +1889,22 @@ function barraAbasPartida() {
 }
 
 function mudarAbaPartida(aba) {
+  const scrollAntes =
+    window.scrollY ||
+    document.documentElement.scrollTop ||
+    0;
+
   abaAtual = aba;
+
   renderPaginaPartida();
+
+  requestAnimationFrame(() => {
+    window.scrollTo({
+      top: scrollAntes,
+      left: 0,
+      behavior: "instant"
+    });
+  });
 }
 
 /* =========================================================
