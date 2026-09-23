@@ -1880,7 +1880,7 @@ overscroll-behavior-x:contain;
               botao(
                 nome,
                 `mudarAbaPartida('${id}')`,
-                abaAtual === id
+                abaAtual === id,
                 `data-aba-partida="${id}"`
               )
           )
