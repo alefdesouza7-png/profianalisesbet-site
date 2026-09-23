@@ -5736,7 +5736,7 @@ if (campeonatoSelecionado !== "todos") {
             faltasSofridas: [],
             desarmes: [],
             passes: [],
-            passesChave: []
+            passesChave: [],
             historico: {
   chutes: [],
   chutesGol: [],
