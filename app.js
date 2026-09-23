@@ -5671,18 +5671,23 @@ if (campeonatoSelecionado !== "todos") {
     );
   }
 
-  if (filtroLocal === "fora") {
-    const localDesejado =
-      lado === "casa"
-        ? "fora"
-        : "casa";
+  const filtroLocal =
+  filtroRankingHistorico.local;
 
-    partidas = partidas.filter(p =>
-      String(p?.local || "")
-        .trim()
-        .toLowerCase() === localDesejado
-    );
-  }
+if (
+  filtroLocal === "casa" ||
+  filtroLocal === "fora"
+) {
+  partidas = partidas.filter(p => {
+    const localPartida = String(
+      p?.local || ""
+    )
+      .trim()
+      .toLowerCase();
+
+    return localPartida === filtroLocal;
+  });
+}
 
   partidas = partidas.slice(0, quantidade);
   const mapa = new Map();
@@ -5846,32 +5851,51 @@ if (campeonatoSelecionado !== "todos") {
 
   return [...mapa.values()]
     .map(j => {
-      const qtd =
-        Math.max(1, j.partidas);
+      const mediaCampo = campo => {
+  const valores = safeArray(
+    j?.historico?.[campo]
+  ).filter(
+    valor =>
+      valor !== null &&
+      valor !== undefined &&
+      Number.isFinite(Number(valor))
+  );
+
+  if (!valores.length) return 0;
+
+  return (
+    valores.reduce(
+      (total, valor) =>
+        total + Number(valor),
+      0
+    ) / valores.length
+  );
+};
 
       return {
         ...j,
 
-        chutes:
-          j.chutes / qtd,
 
-        chutesGol:
-          j.chutesGol / qtd,
+      chutes:
+  mediaCampo("chutes"),
 
-        faltasCometidas:
-          j.faltasCometidas / qtd,
+chutesGol:
+  mediaCampo("chutesGol"),
 
-        faltasSofridas:
-          j.faltasSofridas / qtd,
+faltasCometidas:
+  mediaCampo("faltasCometidas"),
 
-        desarmes:
-          j.desarmes / qtd,
+faltasSofridas:
+  mediaCampo("faltasSofridas"),
 
-        passes:
-          j.passes / qtd,
+desarmes:
+  mediaCampo("desarmes"),
 
-        passesChave:
-          j.passesChave / qtd
+passes:
+  mediaCampo("passes"),
+
+passesChave:
+  mediaCampo("passesChave")
       };
     });
 }
