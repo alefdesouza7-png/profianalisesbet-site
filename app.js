@@ -5293,9 +5293,7 @@ function cardJogadorPartida(
 let rankingJogadoresCampo =
   "chutes";
 
-function mudarRankingJogadores(
-  campo
-) {
+function mudarRankingJogadores(campo) {
   const permitidos = [
     "chutes",
     "chutesGol",
@@ -5306,14 +5304,17 @@ function mudarRankingJogadores(
     "passesChave"
   ];
 
-  if (
-    permitidos.includes(campo)
-  ) {
-    rankingJogadoresCampo =
-      campo;
-  }
+  if (!permitidos.includes(campo)) return;
+
+  const scrollAntes = window.scrollY;
+
+  rankingJogadoresCampo = campo;
 
   renderPaginaPartida();
+
+  requestAnimationFrame(() => {
+    window.scrollTo(0, scrollAntes);
+  });
 }
 
 function nomeCampoRanking(
@@ -5504,32 +5505,40 @@ function jogadoresHistoricosRanking(lado) {
   const quantidade =
     filtroRankingHistorico.quantidade;
 
+  const bloco =
+    lado === "casa"
+      ? historicoAtual?.casa
+      : historicoAtual?.fora;
+
+  if (!bloco) return [];
+
+  const chave =
+    Number(quantidade) === 5
+      ? "ultimas5"
+      : "ultimas10";
+
   let partidas =
-    partidasHistoricoLado(
-      lado,
-      quantidade
+    safeArray(
+      bloco?.[chave]?.partidas
+    ).slice(
+      0,
+      Number(quantidade) === 5
+        ? 5
+        : 10
     );
 
-  if (
-    filtroRankingHistorico.local === "casa"
-  ) {
-    partidas =
-      partidas.filter(
-        p =>
-          String(p?.local || "")
-            .toLowerCase() === "casa"
-      );
-  }
+  const filtroLocal =
+    filtroRankingHistorico.local;
 
-  if (
-    filtroRankingHistorico.local === "fora"
-  ) {
-    partidas =
-      partidas.filter(
-        p =>
-          String(p?.local || "")
-            .toLowerCase() === "fora"
-      );
+  if (filtroLocal !== "geral") {
+    partidas = partidas.filter(partida => {
+      const local =
+        String(partida?.local || "")
+          .trim()
+          .toLowerCase();
+
+      return local === filtroLocal;
+    });
   }
 
   const mapa = new Map();
@@ -5546,6 +5555,7 @@ function jogadoresHistoricosRanking(lado) {
       if (!mapa.has(id)) {
         mapa.set(id, {
           id,
+
           nome:
             j?.nome ||
             j?.name ||
@@ -5559,8 +5569,10 @@ function jogadoresHistoricosRanking(lado) {
           chutes: 0,
           chutesGol: 0,
           faltasCometidas: 0,
+          faltasSofridas: 0,
           desarmes: 0,
           passes: 0,
+          passesChave: 0,
           partidas: 0
         });
       }
@@ -5579,11 +5591,17 @@ function jogadoresHistoricosRanking(lado) {
       item.faltasCometidas +=
         n(j?.faltasCometidas);
 
+      item.faltasSofridas +=
+        n(j?.faltasSofridas);
+
       item.desarmes +=
         n(j?.desarmes);
 
       item.passes +=
         n(j?.passes);
+
+      item.passesChave +=
+        n(j?.passesChave);
     });
   });
 
@@ -5607,11 +5625,17 @@ function jogadoresHistoricosRanking(lado) {
         faltasCometidas:
           j.faltasCometidas / qtd,
 
+        faltasSofridas:
+          j.faltasSofridas / qtd,
+
         desarmes:
           j.desarmes / qtd,
 
         passes:
-          j.passes / qtd
+          j.passes / qtd,
+
+        passesChave:
+          j.passesChave / qtd
       };
     });
 }
@@ -5701,48 +5725,55 @@ function renderJogadores() {
         )}
       </div>
       <div
-        style="
-          display:flex;
-          gap:7px;
-          overflow-x:auto;
-          margin-bottom:15px;
-        "
-      >
-        ${botao(
-          "Chutes",
-          "mudarRankingJogadores('chutes')",
-          rankingJogadoresCampo ===
-            "chutes"
-        )}
+  style="
+    margin-bottom:15px;
+    position:relative;
+  "
+>
+  <select
+    onchange="mudarRankingJogadores(this.value)"
+    style="
+      width:100%;
+      min-height:48px;
+      padding:0 46px 0 14px;
+      border:1px solid rgba(46,229,139,.45);
+      border-radius:12px;
+      background:#10252d;
+      color:#fff;
+      font-size:15px;
+      font-weight:900;
+      outline:none;
+    "
+  >
+    <option value="chutes" ${rankingJogadoresCampo === "chutes" ? "selected" : ""}>
+      Chutes
+    </option>
 
-        ${botao(
-          "No alvo",
-          "mudarRankingJogadores('chutesGol')",
-          rankingJogadoresCampo ===
-            "chutesGol"
-        )}
+    <option value="chutesGol" ${rankingJogadoresCampo === "chutesGol" ? "selected" : ""}>
+      No alvo
+    </option>
 
-        ${botao(
-          "Faltas",
-          "mudarRankingJogadores('faltasCometidas')",
-          rankingJogadoresCampo ===
-            "faltasCometidas"
-        )}
+    <option value="faltasCometidas" ${rankingJogadoresCampo === "faltasCometidas" ? "selected" : ""}>
+      Faltas cometidas
+    </option>
 
-        ${botao(
-          "Desarmes",
-          "mudarRankingJogadores('desarmes')",
-          rankingJogadoresCampo ===
-            "desarmes"
-        )}
+    <option value="faltasSofridas" ${rankingJogadoresCampo === "faltasSofridas" ? "selected" : ""}>
+      Faltas sofridas
+    </option>
 
-        ${botao(
-          "Passes",
-          "mudarRankingJogadores('passes')",
-          rankingJogadoresCampo ===
-            "passes"
-        )}
-      </div>
+    <option value="desarmes" ${rankingJogadoresCampo === "desarmes" ? "selected" : ""}>
+      Desarmes
+    </option>
+
+    <option value="passes" ${rankingJogadoresCampo === "passes" ? "selected" : ""}>
+      Passes
+    </option>
+
+    <option value="passesChave" ${rankingJogadoresCampo === "passesChave" ? "selected" : ""}>
+      Passes-chave
+    </option>
+  </select>
+</div>
 
       <div
         style="
