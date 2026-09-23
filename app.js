@@ -2708,12 +2708,25 @@ function renderResumoPartida() {
 let filtroH2H = 5;
 
 function mudarFiltroH2H(qtd) {
+  const scrollAntes =
+    window.scrollY ||
+    document.documentElement.scrollTop ||
+    0;
+
   filtroH2H =
     Number(qtd) === 10
       ? 10
       : 5;
 
   renderPaginaPartida();
+
+  requestAnimationFrame(() => {
+    window.scrollTo({
+      top: scrollAntes,
+      left: 0,
+      behavior: "instant"
+    });
+  });
 }
 
 function extrairH2HExistente() {
@@ -3123,13 +3136,30 @@ let filtroHistorico = {
   campeonato: "todos"
 };
 
+function manterScrollAoRenderizar() {
+  const scrollAntes =
+    window.scrollY ||
+    document.documentElement.scrollTop ||
+    0;
+
+  renderPaginaPartida();
+
+  requestAnimationFrame(() => {
+    window.scrollTo({
+      top: scrollAntes,
+      left: 0,
+      behavior: "instant"
+    });
+  });
+}
+
 function mudarQuantidadeHistorico(qtd) {
   filtroHistorico.quantidade =
     Number(qtd) === 5
       ? 5
       : 10;
 
-  renderPaginaPartida();
+  manterScrollAoRenderizar();
 }
 
 function mudarLocalHistorico(local) {
@@ -3141,14 +3171,14 @@ function mudarLocalHistorico(local) {
       local;
   }
 
-  renderPaginaPartida();
+  manterScrollAoRenderizar();
 }
 
 function mudarCampeonatoHistorico(id) {
   filtroHistorico.campeonato =
     String(id || "todos");
 
-  renderPaginaPartida();
+  manterScrollAoRenderizar();
 }
 
 /* =========================================================
