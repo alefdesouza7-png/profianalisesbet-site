@@ -5671,23 +5671,7 @@ if (campeonatoSelecionado !== "todos") {
     );
   }
 
-  const filtroLocal =
-  filtroRankingHistorico.local;
-
-if (
-  filtroLocal === "casa" ||
-  filtroLocal === "fora"
-) {
-  partidas = partidas.filter(p => {
-    const localPartida = String(
-      p?.local || ""
-    )
-      .trim()
-      .toLowerCase();
-
-    return localPartida === filtroLocal;
-  });
-}
+  
 
   partidas = partidas.slice(0, quantidade);
   const mapa = new Map();
