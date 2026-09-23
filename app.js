@@ -2045,7 +2045,18 @@ const statsFora = {
       12,
       amostra
     );
-const diferencaChutesGol =
+const diferencaChutes =
+  (statsCasa.chutes ?? 0) -
+  (statsFora.chutes ?? 0);
+
+score += Math.max(
+  -6,
+  Math.min(
+    6,
+    diferencaChutes * 0.5
+  )
+);
+  const diferencaChutesGol =
   (statsCasa.chutesGol ?? 0) -
   (statsFora.chutesGol ?? 0);
 
